@@ -1,0 +1,10 @@
+line-length = 150
+
+[lint]
+select = ["E", "F", "B", "Q", "PL", "SIM", "N"]
+ignore = [
+    "PLR6301",  # methods that don't use "self"
+    "E261",     # minimum of 2 spaces before an inline comment
+    "PLR2004",  # magic values
+    "N806",     # variables in functions should be lowercase
+]

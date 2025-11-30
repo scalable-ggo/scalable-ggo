@@ -1,17 +1,17 @@
-from ase import *
-from ase import units
-from ase.visualize import view
-from ase.optimize.basin import BasinHopping
-from ase.calculators.lj import LennardJones
-from ase.optimize import FIRE
-from ase.optimize.sciopt import SciPyFminBFGS, SciPyFminCG
+# from ase import *
+# from ase import units
+# from ase.visualize import view
+# from ase.optimize.basin import BasinHopping
+# from ase.calculators.lj import LennardJones
+# from ase.optimize import FIRE
+# from ase.optimize.sciopt import SciPyFminBFGS, SciPyFminCG
 
 import cProfile
 from cupyx.profiler import time_range
 
 import math
 import cupy as cp
-#import numpy as np
+# import numpy as np
 
 warpsize = 32
 
@@ -146,7 +146,7 @@ pairwise_energy = None
 @time_range()
 def get_energy(pos):
     n = len(pos)
-    global pairwise_energy
+    global pairwise_energy # noqa: PLW0603
     if pairwise_energy is None:
         pairwise_energy = cp.zeros((n), dtype=cp.float32)
 
@@ -171,7 +171,7 @@ pairwise_force = None
 @time_range()
 def get_forces(pos):
     n = len(pos)
-    global pairwise_force
+    global pairwise_force # noqa: PLW0603
     if pairwise_force is None:
         pairwise_force = cp.zeros((n, 4), dtype=cp.float32)
 
@@ -252,7 +252,7 @@ def hopBasin(pos, steps):
     ro = pos
     Eo = Emin
     dr = 0.1
-    kT = 100 * units.kB
+    kT = 100 * 8.617330337217213e-05 # units.kB
 
     for step in range(steps):
         En = 1e16
@@ -288,14 +288,17 @@ while En > 1e15:
     En = get_energy(pos)
 
 cProfile.run("emin, posmin = hopBasin(pos, 2000)", sort=1)
-posmin = posmin.get()
+posmin = posmin.get()  # noqa: F821
 
-atomlist = []
+for p in posmin:
+    print(p)
 
-for i in range(n):
-    atomlist.append(Atom('He', posmin[i]))
-print(emin)
-view(Atoms(atomlist))
+# atomlist = []
+
+# for i in range(n):
+#     atomlist.append(Atom('He', posmin[i]))
+# print(emin)
+# view(Atoms(atomlist))
 
 # atomlist = []
 #
