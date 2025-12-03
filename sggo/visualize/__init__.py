@@ -1,1 +1,1 @@
-from .plot import ClusterPlot
+from .plot import ClusterPlot as ClusterPlot
