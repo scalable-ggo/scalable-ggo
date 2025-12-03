@@ -12,6 +12,7 @@ from cupyx.profiler import time_range
 from sggo.cluster import Cluster
 import sggo.energy.lj as lj
 import sggo.local_opt.fire as fire
+import sggo.visualize.plot as plot
 
 import cupy as cp
 # import numpy as np
@@ -26,13 +27,13 @@ def hopBasin(cluster, steps, energy, local_opt):
     energy_current = energy_min
 
     dr = 0.1
-    kT = 100 * 8.617330337217213e-05 # units.kB
+    kT = 100 * 8.617330337217213e-05  # units.kB
 
     for step in range(steps):
         energy_start = 1e16
         while energy_start > 1e15:
             ro = cluster_current.positions
-            rn = ro + dr * cp.random.uniform(-1., 1., ro.shape, dtype=cp.float32)
+            rn = ro + dr * cp.random.uniform(-1.0, 1.0, ro.shape, dtype=cp.float32)
             cluster_new = Cluster(rn)
             energy_start = energy.energy(cluster_new)
 
@@ -53,10 +54,10 @@ def hopBasin(cluster, steps, energy, local_opt):
     return energy_min, cluster_min
 
 
-energy = lj.create()
+energy = lj.create(lj.LJVariant.GPUKERNEL)
 local_opt = fire.create(energy)
 
-n = 1024
+n = 100
 r = n / 4
 
 cluster = None
@@ -69,9 +70,13 @@ while En > 1e15:
 
     En = energy.energy(cluster)
 
+
 emin, clustermin = None, None
 cProfile.run("emin, clustermin = hopBasin(cluster, 2000, energy, local_opt)", sort=1)
 posmin = cp.asnumpy(clustermin.positions)
+
+plot = plot.ClusterPlot(clustermin)
+plot.plot()
 
 for p in posmin:
     print(p)
