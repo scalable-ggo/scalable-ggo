@@ -1,7 +1,7 @@
 from numpy.typing import ArrayLike
 
 
-class Cluster():
+class Cluster:
     positions: ArrayLike
 
     def __init__(self, positions: ArrayLike) -> None:
@@ -12,3 +12,7 @@ class Cluster():
 
     def deepcopy(self) -> "Cluster":
         return Cluster(self.positions.copy())
+
+    @staticmethod
+    def generate(num_atoms: int) -> "Cluster":
+        raise NotImplementedError()
