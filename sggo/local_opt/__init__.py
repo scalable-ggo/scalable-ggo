@@ -12,10 +12,10 @@ class LocalOpt(ABC):
 
     @abstractmethod
     def local_min(
-            self,
-            cluster: Cluster,
-            *,
-            target_gradient: float = 0.1,
-            max_steps: int = 100000,
-            ) -> Cluster:
+        self,
+        cluster: Cluster,
+        *,
+        target_gradient: float = 0.1,
+        max_steps: int = 100000,
+    ) -> Cluster:
         raise NotImplementedError("Please Implement this method")

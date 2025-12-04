@@ -15,18 +15,19 @@ class FIRE(LocalOpt):
     astart: float
     fa: float
 
-    def __init__(self,
-                 energy: Energy,
-                 *,
-                 maxstep: float = 0.2,
-                 dt_start: float = 0.1,
-                 dtmax: float = 1.0,
-                 nmin: int = 5,
-                 finc: float = 1.1,
-                 fdec: float = 0.5,
-                 a_start: float = 0.1,
-                 fa: float = 0.1,
-                 ) -> None:
+    def __init__(
+        self,
+        energy: Energy,
+        *,
+        maxstep: float = 0.2,
+        dt_start: float = 0.1,
+        dtmax: float = 1.0,
+        nmin: int = 5,
+        finc: float = 1.1,
+        fdec: float = 0.5,
+        a_start: float = 0.1,
+        fa: float = 0.1,
+    ) -> None:
         super(FIRE, self).__init__(energy)
         self.maxstep = maxstep
         self.dt_start = dt_start
@@ -75,8 +76,7 @@ class FIRE(LocalOpt):
             else:
                 vf = xp.vdot(f, v)
                 if vf > xp.float32(0.0):
-                    v = (xp.float32(1.0) - a) * v + a * f / xp.sqrt(
-                        xp.vdot(f, f)) * xp.sqrt(xp.vdot(v, v))
+                    v = (xp.float32(1.0) - a) * v + a * f / xp.sqrt(xp.vdot(f, f)) * xp.sqrt(xp.vdot(v, v))
                     if step_cnt > nmin:
                         dt = min(dt * finc, dtmax)
                         a *= fa
