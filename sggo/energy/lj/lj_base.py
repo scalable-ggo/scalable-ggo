@@ -21,7 +21,7 @@ class LJ(Energy):
     def _energy_shared(self, pos: ArrayLike) -> float:
         xp = cp.get_array_module(pos)
 
-        return xp.sum(self.__energies_shared(pos))
+        return xp.sum(self._energies_shared(pos))
 
     def _energy_gradient_shared(self, pos: ArrayLike) -> ArrayLike:
         xp = cp.get_array_module(pos)
