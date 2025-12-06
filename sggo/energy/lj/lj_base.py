@@ -34,6 +34,6 @@ class LJ(Energy):
         c6 = c2 * c2 * c2
         c12 = c6 * c6
 
-        force_mags = xp.float32(24) * (xp.float32(2) * c12 - c6) * c2
+        mags = xp.float32(-24) * (xp.float32(2) * c12 - c6) * c2
 
-        return (force_mags[:, :, xp.newaxis] * disp).sum(1)
+        return (mags[:, :, xp.newaxis] * disp).sum(1)

@@ -65,7 +65,7 @@ class FIRE(LocalOpt):
 
         for _ in range(max_steps):
             cluster.positions = pos
-            f = self.energy.energy_gradient(cluster)
+            f = -self.energy.energy_gradient(cluster)
             norm = xp.linalg.norm(f, axis=1).max()
             if norm < fmax:
                 break
