@@ -36,8 +36,7 @@ class LJGPUKernel(LJ):
                 shared_mem=4 * warplines
         )
 
-        energies = cp.sum(pairwise_energy) / 2
-        return gpu_utils.assimilar(energies, cluster.positions)
+        return gpu_utils.assimilar(pairwise_energy, cluster.positions)
 
     def energy_gradient(self, cluster: Cluster) -> ArrayLike:
         pos = cp.asarray(cluster.positions, dtype=cp.float32)
