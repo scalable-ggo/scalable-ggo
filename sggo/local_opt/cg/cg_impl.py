@@ -28,6 +28,7 @@ class CGCPU(CG):
         res.positions = cp.asnumpy(res.positions)
         res = self._cg(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res
 
 
 class CGGPU(CG):
@@ -42,3 +43,4 @@ class CGGPU(CG):
         res.positions = cp.asarray(res.positions)
         res = self._cg(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res

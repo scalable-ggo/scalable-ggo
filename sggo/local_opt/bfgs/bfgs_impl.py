@@ -28,6 +28,7 @@ class BFGSCPU(BFGS):
         res.positions = cp.asnumpy(res.positions)
         res = self._bfgs(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res
 
 
 class BFGSGPU(BFGS):
@@ -42,3 +43,4 @@ class BFGSGPU(BFGS):
         res.positions = cp.asarray(res.positions)
         res = self._bfgs(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res
