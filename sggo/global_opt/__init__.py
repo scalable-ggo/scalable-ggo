@@ -1,0 +1,15 @@
+from abc import ABC, abstractmethod
+
+from sggo.cluster import Cluster
+from sggo.local_opt import LocalOpt
+
+
+class GlobalOpt(ABC):
+    local_opt: LocalOpt
+
+    def __init__(self, local_opt: LocalOpt):
+        self.local_opt = local_opt
+
+    @abstractmethod
+    def find_minimum(self, num_atoms: int, num_epochs: int) -> Cluster:
+        raise NotImplementedError()
