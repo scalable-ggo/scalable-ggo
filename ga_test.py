@@ -1,4 +1,6 @@
 from sggo.global_opt.genetic import GeneticAlgorithm
+from sggo.local_opt.fire import FIRECPU
+from sggo.energy.lj import LJCPU
 from numpy.typing import ArrayLike
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,17 +17,17 @@ def idk2() -> float:
 def main():
 
     num_candidates = 3     
-    num_atoms = 20         
+    num_atoms = 30
     R = 5.0                 
 
     ga = GeneticAlgorithm(
         num_candidates=num_candidates,
-        local_optimizer=idk,
+        local_optimizer=FIRECPU(LJCPU()),
         mating_distribution=idk2,
         r=R,
     )
 
-    clusters = ga.create_clusters(num_atoms=num_atoms)
+    clusters = [ga.find_minimum(num_atoms, 100)]
 
     fig = plt.figure(figsize=(5 * num_candidates, 5))
 

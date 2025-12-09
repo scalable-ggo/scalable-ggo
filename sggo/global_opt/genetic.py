@@ -12,32 +12,6 @@ class GeneticAlgorithm:
         self.mating_distribution = mating_distribution
         self.r = r
     
-    def create_clusters(self, num_atoms: int) -> list[Cluster]:
-        num_candidates = self.num_candidates
-        clusters: list[Cluster] = []
-        r = self.r
-        for i in range(num_candidates):
-
-            coords = []
-
-            for j in range(num_atoms):
-                v = np.random.normal(size=3)
-                length = np.sqrt(v[0]**2 + v[1]**2 + v[2]**2)
-                v /= length 
-
-                u = np.random.random()
-                r *= (u ** (1 / 3))
-
-                x = v[0] * r
-                y = v[1] * r
-                z = v[2] * r
-
-                coords.append([x, y, z])
-
-            clusters.append(Cluster(np.array(coords)))
-
-        return clusters
-    
     def boltzmann_weights(self, energies):
         e = np.array(energies)
         emin = e.min()
@@ -47,7 +21,7 @@ class GeneticAlgorithm:
         return w
 
     def mutate(self, cluster: Cluster) -> Cluster:
-        raise NotImplementedError()
+        return cluster
 
     def mate(self, cluster1: Cluster, cluster2: Cluster) -> Cluster:
         # translate the clusters so that their centers are at (0, 0, 0)
@@ -83,11 +57,11 @@ class GeneticAlgorithm:
         rng = np.random.default_rng()
         energy_fn = self.local_optimizer.energy.energy
 
-        clusters = self.create_clusters(num_atoms)
+        clusters = [Cluster.generate(num_atoms, energy_fn, self.r) for _ in range(self.num_candidates)]
         energies = []
 
         for i, cl in enumerate(clusters):
-            relaxed = self.local_optimizer(cl)
+            relaxed = self.local_optimizer.local_min(cl)
             E = energy_fn(relaxed)
             energies.append(E)
             clusters[i] = relaxed  
@@ -111,7 +85,7 @@ class GeneticAlgorithm:
             if rng.random() < mutation_rate:
                 child = self.mutate(child)
 
-            child_relaxed = self.local_optimizer(child)
+            child_relaxed = self.local_optimizer.local_min(child)
             child_energy = energy_fn(child_relaxed)
 
             duplicate = False
@@ -132,4 +106,3 @@ class GeneticAlgorithm:
                     best_cluster = child_relaxed.copy()
 
         return best_cluster
-    
