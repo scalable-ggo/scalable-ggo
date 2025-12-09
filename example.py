@@ -54,10 +54,10 @@ def hopBasin(cluster, steps, energy, local_opt):
     return energy_min, cluster_min
 
 
-energy = lj.create(lj.LJVariant.GPUKERNEL)
+energy = lj.create()
 local_opt = fire.create(energy)
 
-n = 100
+n = 1024
 r = n / 4
 
 cluster = None
