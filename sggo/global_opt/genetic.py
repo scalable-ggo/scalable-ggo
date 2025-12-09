@@ -1,79 +1,76 @@
-from numpy.typing import ArrayLike
-from typing import Callable
 import numpy as np
+from typing import Callable
+
+from sggo.cluster import Cluster
+from sggo.local_opt import LocalOpt
 
 
 class GeneticAlgorithm:
-    def __init__(self, num_candidates: int, local_optimizer: Callable[[ArrayLike], ArrayLike], mating_distribution: Callable[[], float], R: float):
+    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float], r: float):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
         self.mating_distribution = mating_distribution
-        self.R = R
+        self.r = r
     
-    def create_clusters(self, num_atoms: int) -> list[ArrayLike]:
-         num_candidates = self.num_candidates
-         clusters: list[ArrayLike] = []
-         R = self.R
-         for i in range(num_candidates):
-
-            coords = []
-
-            for _ in range(num_atoms):
-                v = np.random.normal(size=3)
-                length = np.sqrt(v[0]**2 + v[1]**2 + v[2]**2)
-                v = v / length 
-
-                u = np.random.random()
-                r = R * (u ** (1/3))
-
-                x = v[0] * r
-                y = v[1] * r
-                z = v[2] * r
-
-                coords.append([x, y, z])
-
-            clusters.append(np.array(coords))
-
-         return clusters
-    
-    def boltzmann_weights(energies):
+    def boltzmann_weights(self, energies):
         e = np.array(energies)
         emin = e.min()
         betaE = (e - emin)
         w = np.exp(-betaE)
         w /= w.sum()
         return w
-        
-    
-    def mutate(self, cluster: ArrayLike) -> ArrayLike:
-        raise NotImplementedError()
-    
-    def split(self, cluster: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
-        raise NotImplementedError()
 
-    def join(self, cluster1: ArrayLike, cluster2: ArrayLike) -> ArrayLike:
-        raise NotImplementedError()
+    def mutate(self, cluster: Cluster) -> Cluster:
+        return cluster
 
+    def mate(self, cluster1: Cluster, cluster2: Cluster) -> Cluster:
+        # translate the clusters so that their centers are at (0, 0, 0)
+        p1 = cluster1.positions - np.mean(cluster1.positions, axis=0)
+        p2 = cluster2.positions - np.mean(cluster2.positions, axis=0)
+        # choose a random plane to slice the clusters, represented by a normal vector and (implicitly) point (0, 0, 0)
+        plane_normal = np.random.uniform(low=-1.0, high=1.0, size=3)
+        plane_normal /= np.linalg.norm(plane_normal)
+        # calculate the distances from each atom to the plane
+        d1 = np.dot(p1, plane_normal)
+        d2 = np.dot(p2, plane_normal)
+        # argsort instead of sort cause the indices will be used later to sort p1 and p2
+        idx1 = np.argsort(d1)
+        idx2 = np.argsort(d2)
+        d1 = d1[idx1]
+        d2 = d2[idx2]
+        # translate the parents if necessary
+        i = d1.searchsorted(0)
+        j = d2.searchsorted(0)
+        while i < j:
+            if abs(d1[i]) < abs(d2[j - 1]):
+                i += 1
+            else:
+                j -= 1
+        while i > j:
+            if abs(d1[i - 1]) < abs(d2[j + 1]):
+                i -= 1
+            else:
+                j += 1
+        return Cluster(np.concat([p1[idx1[:i]], p2[idx2[i:]]]))
 
-    def find_minimum(self, num_atoms: int, num_epochs: int, energy_fn: Callable[[ArrayLike], float], mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> ArrayLike:
-
+    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> Cluster:
         rng = np.random.default_rng()
+        energy_fn = self.local_optimizer.energy.energy
 
-        clusters = self.create_clusters(num_atoms)
+        clusters = [Cluster.generate(num_atoms, energy_fn, self.r) for _ in range(self.num_candidates)]
         energies = []
 
-        for cl in clusters:
-            relaxed = self.local_optimizer(cl)
+        for i, cl in enumerate(clusters):
+            relaxed = self.local_optimizer.local_min(cl)
             E = energy_fn(relaxed)
             energies.append(E)
-            clusters[clusters.index(cl)] = relaxed  
+            clusters[i] = relaxed  
 
         best_idx = int(np.argmin(energies))
         best_cluster = clusters[best_idx].copy()
         best_energy = energies[best_idx]
 
-        for i in range(num_epochs):
-
+        for _ in range(num_epochs):
             weights = self.boltzmann_weights(energies)
             i1 = rng.choice(len(clusters), p=weights)
             i2 = rng.choice(len(clusters), p=weights)
@@ -83,16 +80,12 @@ class GeneticAlgorithm:
             parent1 = clusters[i1]
             parent2 = clusters[i2]
 
-            split1 = self.split(parent1)
-            split2 = self.split(parent2, plane_normal=split1.normal)
-
-
-            child = self.join(left1, right2)
+            child = self.mate(parent1, parent2)
 
             if rng.random() < mutation_rate:
                 child = self.mutate(child)
 
-            child_relaxed = self.local_optimizer(child)
+            child_relaxed = self.local_optimizer.local_min(child)
             child_energy = energy_fn(child_relaxed)
 
             duplicate = False
@@ -113,4 +106,3 @@ class GeneticAlgorithm:
                     best_cluster = child_relaxed.copy()
 
         return best_cluster
-    

@@ -9,4 +9,5 @@ ignore = [
     "N806",     # variables in functions should be lowercase
     "PLR0913",  # too many arguments
     "PLR0914",  # too many local variables
+    "B007"      # unused loop control variable
 ]
