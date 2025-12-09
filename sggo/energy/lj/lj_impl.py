@@ -17,22 +17,22 @@ class LJAuto(LJ):
 class LJCPU(LJ):
     def energies(self, cluster: Cluster) -> ArrayLike:
         pos = cp.asnumpy(cluster.positions)
-        res = self.__energies_shared(pos)
+        res = self._energies_shared(pos)
         return gpu_utils.assimilar(res, cluster.positions)
 
     def energy_gradient(self, cluster: Cluster) -> ArrayLike:
         pos = cp.asnumpy(cluster.positions)
-        res = self.__energy_gradient_shared(pos)
+        res = self._energy_gradient_shared(pos)
         return gpu_utils.assimilar(res, cluster.positions)
 
 
 class LJGPU(LJ):
     def energies(self, cluster: Cluster) -> ArrayLike:
         pos = cp.asarray(cluster.positions)
-        res = self.__energies_shared(pos)
+        res = self._energies_shared(pos)
         return gpu_utils.assimilar(res, cluster.positions)
 
     def energy_gradient(self, cluster: Cluster) -> ArrayLike:
         pos = cp.asarray(cluster.positions)
-        res = self.__energy_gradient_shared(pos)
+        res = self._energy_gradient_shared(pos)
         return gpu_utils.assimilar(res, cluster.positions)
