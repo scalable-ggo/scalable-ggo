@@ -3,6 +3,7 @@ from typing import Callable
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
+from numpy.typing import ArrayLike
 
 
 class GeneticAlgorithm:
