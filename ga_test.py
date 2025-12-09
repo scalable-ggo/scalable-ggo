@@ -1,4 +1,4 @@
-from genetic import GeneticAlgorithm
+from sggo.global_opt.genetic import GeneticAlgorithm
 from numpy.typing import ArrayLike
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ def main():
         num_candidates=num_candidates,
         local_optimizer=idk,
         mating_distribution=idk2,
-        R=R,
+        r=R,
     )
 
     clusters = ga.create_clusters(num_atoms=num_atoms)
