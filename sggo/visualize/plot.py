@@ -1,15 +1,13 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import cupy as cp
 
-from sggo import cluster
 from sggo.cluster import Cluster
 
 
 class ClusterPlot:
     def __init__(self, cluster: Cluster, atom_color: str = "#80C9E4", size: int = 200) -> None:
         self.cluster: Cluster = cluster
-        self.N: int = cluster.positions.shape[0]
+        self.N: int = cp.asnumpy(cluster.positions).shape[0]
         self.atom_color: str = atom_color
         self.size: int = size
 
