@@ -28,6 +28,7 @@ class FIRECPU(FIRE):
         res.positions = cp.asnumpy(res.positions)
         res = self._fire(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res
 
 
 class FIREGPU(FIRE):
@@ -42,3 +43,4 @@ class FIREGPU(FIRE):
         res.positions = cp.asarray(res.positions)
         res = self._fire(res, target_gradient, max_steps)
         res.positions = gpu_utils.assimilar(res.positions, cluster.positions)
+        return res

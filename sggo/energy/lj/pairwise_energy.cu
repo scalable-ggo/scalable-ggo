@@ -17,7 +17,7 @@ void pairwise_energy(const uint32_t n, const float (* __restrict__ x)[3], float 
         float c2 = 1.f / (dx * dx + dy * dy + dz * dz);
         float c6 = c2 * c2 * c2;
 
-        energy = 4.f * (c6 * c6 - c6);
+        energy = 2.f * (c6 * c6 - c6);
     } else {
         energy = 0.0;
     }
