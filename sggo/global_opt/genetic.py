@@ -20,11 +20,6 @@ class GeneticAlgorithm:
         w /= w.sum()
         return w
     
-    def mutate(self, cluster: ArrayLike) -> ArrayLike:
-        self.num_candidates = num_candidates
-        self.local_optimizer = local_optimizer
-        self.mating_distribution = mating_distribution
-    
     def create_clusters(self, num_atoms: int) -> list[ArrayLike]:
         raise NotImplementedError()
     
@@ -96,9 +91,6 @@ class GeneticAlgorithm:
     
     def split(self, cluster: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
         raise NotImplementedError()
-
-    def mutate(self, cluster: Cluster) -> Cluster:
-        return cluster
 
     def mate(self, cluster1: Cluster, cluster2: Cluster) -> Cluster:
         # translate the clusters so that their centers are at (0, 0, 0)
