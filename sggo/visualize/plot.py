@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import cupy as cp
 
+from sggo import cluster
 from sggo.cluster import Cluster
 
 
@@ -17,7 +19,9 @@ class ClusterPlot:
 
         ax.set_title(f"Cluster — {self.N} atoms", fontsize=16, pad=20)
 
-        positions = np.asarray(self.cluster.positions.get())
+        positions = cp.asnumpy(self.cluster.positions)
+        center = positions.mean(axis=0)
+        positions -= center
 
         ax.scatter(
             positions[:, 0],
