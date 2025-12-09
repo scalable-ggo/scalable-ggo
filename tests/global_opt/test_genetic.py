@@ -7,7 +7,7 @@ from sggo.global_opt.genetic import GeneticAlgorithm
 
 class TestGenetic(unittest.TestCase):
     def test_mate(self):
-        ga = GeneticAlgorithm(2, None, lambda: 0)
+        ga = GeneticAlgorithm(2, None, lambda: 0, 1)
         p1 = np.array([
             [1, 1, 1],
             [1, 1, -1],
