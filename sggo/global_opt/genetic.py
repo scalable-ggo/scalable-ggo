@@ -39,13 +39,13 @@ class GeneticAlgorithm:
         match choice:
             # Angular operator
             case 0:
-                noAtoms: int = rng.integers(1, max(2, int(N/20) + 1)) # 1-5%, otherwise take 1 as default
+                noAtoms: int = rng.integers(1, max(2, int(N / 20) + 1)) # 1-5%, otherwise take 1 as default
                 chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
                 center: ArrayLike = np.mean(cluster, axis=0)
                 for i in chosenAtoms:
                     radius: float = np.linalg.norm(cluster[i] - center)
                     direction: ArrayLike = rng.normal(size=3)
-                    direction = direction / np.linalg.norm(direction)
+                    direction /= np.linalg.norm(direction)
                     cluster[i] = center + radius * direction
             # Cartesian Displacement Operator
             case 1:
@@ -55,11 +55,11 @@ class GeneticAlgorithm:
                 for i in chosenAtoms:
                     rmin: float = nn_dist(i)
                     displacement: ArrayLike = rng.uniform(-1.0, 1.0, size=3)
-                    cluster[i] = cluster[i] + (S * rmin) * displacement
+                    cluster[i] += (S * rmin) * displacement
             # Dynamic Mutation
             case 2:
                 gamma: float = 0.10
-                cluster = cluster * rng.uniform(1.0 - gamma, 1.0 + gamma, size=(N, 3))
+                cluster *= rng.uniform(1.0 - gamma, 1.0 + gamma, size=(N, 3))
             # Geometric Center Displacement Operator
             case 3:
                 amax: float = 0.2
@@ -76,8 +76,8 @@ class GeneticAlgorithm:
                     ri: float = np.linalg.norm(cluster[i] - center)
                     rmin: float = nn_dist(i)
                     direction: ArrayLike = rng.normal(size=3)
-                    direction = direction / np.linalg.norm(direction)
-                    cluster[i] = cluster[i] + ((amax - amin) * (ri / rMax)**w + amin) * rmin * direction
+                    direction /= np.linalg.norm(direction)
+                    cluster[i] += ((amax - amin) * (ri / rMax)**w + amin) * rmin * direction
             # Interior Operator
             case 4:
                 atom_index: int = rng.integers(0, N)
@@ -85,7 +85,7 @@ class GeneticAlgorithm:
                 ri: float = np.linalg.norm(cluster[atom_index] - center)
                 radius: float = rng.uniform(0.01, 0.10) * ri
                 direction: ArrayLike = rng.normal(size=3)
-                direction = direction / np.linalg.norm(direction)
+                direction /= np.linalg.norm(direction)
                 cluster[atom_index] = center + radius * direction
 
         return cluster
