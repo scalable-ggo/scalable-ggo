@@ -19,8 +19,6 @@ class GeneticAlgorithm:
         w = np.exp(-betaE)
         w /= w.sum()
         return w
-<<<<<<< HEAD
-        
     
     def mutate(self, cluster: ArrayLike) -> ArrayLike:
         self.num_candidates = num_candidates
@@ -98,8 +96,6 @@ class GeneticAlgorithm:
     
     def split(self, cluster: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
         raise NotImplementedError()
-=======
->>>>>>> e5e11829f4e6b9a0457fe5098d553504d7f398bc
 
     def mutate(self, cluster: Cluster) -> Cluster:
         return cluster
