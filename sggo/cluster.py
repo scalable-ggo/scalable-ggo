@@ -33,12 +33,8 @@ class Cluster:
 
         return cluster
 
-    def save(self, name="cluster.atom") -> None:
-        cp.asnumpy(self.positions).tofile(name)
+    def save(self, name: str = "cluster.atoms") -> None:
+        np.savetxt(name, cp.asnumpy(self.positions), fmt="%.10f")
 
-    def load(self, name="cluster.atom") -> None:
-        arr = np.fromfile(name, dtype=np.float32)
-
-        assert arr.size % 3 != 0
-
-        self.positions = arr.reshape(-1, 3)
+    def load(self, name: str = "cluster.atoms") -> None:
+        self.positions = np.loadtxt(name, dtype=np.float32)
