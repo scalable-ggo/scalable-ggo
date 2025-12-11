@@ -1,12 +1,14 @@
-import cupy as cp
-import math
-from numpy.typing import ArrayLike
-from typing import Final, Any
 import importlib.resources as rscs
+import math
+from typing import Any, Final
+
+import cupy as cp
+
+from sggo import gpu_utils
+from sggo.cluster import Cluster
+from sggo.types import NDArray
 
 from .lj_base import LJ
-from sggo.cluster import Cluster
-from sggo import gpu_utils
 
 
 class LJGPUKernel(LJ):
@@ -14,7 +16,7 @@ class LJGPUKernel(LJ):
 
     pairwise_force_kernel: Final[Any] = cp.RawKernel(rscs.read_text("sggo.energy.lj", "pairwise_force.cu"), "pairwise_force", backend="nvcc")
 
-    def energies(self, cluster: Cluster) -> ArrayLike:
+    def energies(self, cluster: Cluster) -> NDArray:
         pos = cp.asarray(cluster.positions, dtype=cp.float32)
 
         n = len(pos)
@@ -25,7 +27,7 @@ class LJGPUKernel(LJ):
 
         return gpu_utils.assimilar(pairwise_energy, cluster.positions)
 
-    def energy_gradient(self, cluster: Cluster) -> ArrayLike:
+    def energy_gradient(self, cluster: Cluster) -> NDArray:
         pos = cp.asarray(cluster.positions, dtype=cp.float32)
 
         n = len(pos)

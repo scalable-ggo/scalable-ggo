@@ -1,12 +1,15 @@
-import numpy as np
-from numpy.typing import ArrayLike
 from typing import Callable
+
+import cupy as cp
+import numpy as np
+
+from sggo.types import NDArray
 
 
 class Cluster:
-    positions: ArrayLike
+    positions: NDArray
 
-    def __init__(self, positions: ArrayLike) -> None:
+    def __init__(self, positions: NDArray) -> None:
         self.positions = positions
 
     def copy(self) -> "Cluster":
@@ -20,7 +23,7 @@ class Cluster:
         En = 1e16
         cluster = None
 
-        while En > 1e15:
+        while cluster is None or En > 1e15:
             pos = np.random.uniform(-1, 1, (num_atoms, 3)).astype(np.float32)
             pos /= np.sqrt((pos * pos).sum(1))[:, np.newaxis]
             pos *= np.cbrt(np.random.uniform(0, r, num_atoms))[:, np.newaxis]
@@ -29,3 +32,13 @@ class Cluster:
             En = energy_fn(cluster)
 
         return cluster
+
+    def save(self, name="cluster.atom") -> None:
+        cp.asnumpy(self.positions).tofile(name)
+
+    def load(self, name="cluster.atom") -> None:
+        arr = np.fromfile(name, dtype=np.float32)
+
+        assert arr.size % 3 != 0
+
+        self.positions = arr.reshape(-1, 3)

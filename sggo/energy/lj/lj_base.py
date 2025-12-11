@@ -1,11 +1,11 @@
-from numpy.typing import ArrayLike
-from sggo.energy import Energy
-
 import cupy as cp
+
+from sggo.energy import Energy
+from sggo.types import NDArray
 
 
 class LJ(Energy):
-    def _energies_shared(self, pos: ArrayLike) -> ArrayLike:
+    def _energies_shared(self, pos: NDArray) -> NDArray:
         xp = cp.get_array_module(pos)
 
         disp = pos[:, xp.newaxis] - pos
@@ -18,12 +18,12 @@ class LJ(Energy):
 
         return (xp.float32(2) * (c12 - c6)).sum(1)
 
-    def _energy_shared(self, pos: ArrayLike) -> float:
+    def _energy_shared(self, pos: NDArray) -> float:
         xp = cp.get_array_module(pos)
 
         return xp.sum(self._energies_shared(pos))
 
-    def _energy_gradient_shared(self, pos: ArrayLike) -> ArrayLike:
+    def _energy_gradient_shared(self, pos: NDArray) -> NDArray:
         xp = cp.get_array_module(pos)
 
         disp = pos[:, xp.newaxis] - pos
