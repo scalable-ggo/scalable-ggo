@@ -1,7 +1,7 @@
 from enum import Enum
-from .lj_base import LJ
 
-from .lj_impl import LJAuto, LJCPU, LJGPU
+from .lj_base import LJ
+from .lj_impl import LJCPU, LJGPU, LJAuto
 from .lj_impl_kernel import LJGPUKernel
 
 
