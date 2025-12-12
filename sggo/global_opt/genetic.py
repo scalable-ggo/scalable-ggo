@@ -21,9 +21,6 @@ class GeneticAlgorithm:
         w /= w.sum()
         return w
     
-    def create_clusters(self, num_atoms: int) -> list[ArrayLike]:
-        raise NotImplementedError()
-    
     def mutate(self, cluster: ArrayLike) -> ArrayLike:
         rng = np.random.default_rng()
         choice: int = rng.integers(0, 5)
@@ -89,9 +86,6 @@ class GeneticAlgorithm:
                 cluster[atom_index] = center + radius * direction
 
         return cluster
-    
-    def split(self, cluster: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
-        raise NotImplementedError()
 
     def mate(self, cluster1: Cluster, cluster2: Cluster) -> Cluster:
         # translate the clusters so that their centers are at (0, 0, 0)
