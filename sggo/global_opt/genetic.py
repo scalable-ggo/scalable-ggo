@@ -21,14 +21,14 @@ class GeneticAlgorithm:
         w /= w.sum()
         return w
     
-    def mutate(self, cluster: ArrayLike) -> ArrayLike:
+    def mutate(self, cluster: Cluster) -> Cluster:
         rng = np.random.default_rng()
         choice: int = rng.integers(0, 5)
-        N: int = cluster.shape[0]
+        N: int = cluster.positions.shape[0]
 
         # the distance to the nearest neighbour of the ith atom
         def nn_dist(i: int) -> float:
-            diff: ArrayLike = cluster - cluster[i]
+            diff: ArrayLike = cluster.positions - cluster.positions[i]
             dists: ArrayLike = np.linalg.norm(diff, axis=1)
             dists[i] = np.inf
             return np.min(dists)
@@ -38,12 +38,12 @@ class GeneticAlgorithm:
             case 0:
                 noAtoms: int = rng.integers(1, max(2, int(N / 20) + 1)) # 1-5%, otherwise take 1 as default
                 chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
-                center: ArrayLike = np.mean(cluster, axis=0)
+                center: ArrayLike = np.mean(cluster.positions, axis=0)
                 for i in chosenAtoms:
-                    radius: float = np.linalg.norm(cluster[i] - center)
+                    radius: float = np.linalg.norm(cluster.positions[i] - center)
                     direction: ArrayLike = rng.normal(size=3)
                     direction /= np.linalg.norm(direction)
-                    cluster[i] = center + radius * direction
+                    cluster.positions[i] = center + radius * direction
             # Cartesian Displacement Operator
             case 1:
                 S: float = 0.2
@@ -52,38 +52,38 @@ class GeneticAlgorithm:
                 for i in chosenAtoms:
                     rmin: float = nn_dist(i)
                     displacement: ArrayLike = rng.uniform(-1.0, 1.0, size=3)
-                    cluster[i] += (S * rmin) * displacement
+                    cluster.positions[i] += (S * rmin) * displacement
             # Dynamic Mutation
             case 2:
                 gamma: float = 0.10
-                cluster *= rng.uniform(1.0 - gamma, 1.0 + gamma, size=(N, 3))
+                cluster.positions *= rng.uniform(1.0 - gamma, 1.0 + gamma, size=(N, 3))
             # Geometric Center Displacement Operator
             case 3:
                 amax: float = 0.2
                 amin: float = 0.7
                 w: float = 2.0
 
-                center: ArrayLike = np.mean(cluster, axis=0)
-                rMax: float = np.max(np.linalg.norm(cluster - center, axis=1))
+                center: ArrayLike = np.mean(cluster.positions, axis=0)
+                rMax: float = np.max(np.linalg.norm(cluster.positions - center, axis=1))
 
                 noAtoms: int = rng.integers(1, N + 1)
                 chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
 
                 for i in chosenAtoms:
-                    ri: float = np.linalg.norm(cluster[i] - center)
+                    ri: float = np.linalg.norm(cluster.positions[i] - center)
                     rmin: float = nn_dist(i)
                     direction: ArrayLike = rng.normal(size=3)
                     direction /= np.linalg.norm(direction)
-                    cluster[i] += ((amax - amin) * (ri / rMax)**w + amin) * rmin * direction
+                    cluster.positions[i] += ((amax - amin) * (ri / rMax)**w + amin) * rmin * direction
             # Interior Operator
             case 4:
                 atom_index: int = rng.integers(0, N)
-                center: ArrayLike = np.mean(cluster, axis=0)
-                ri: float = np.linalg.norm(cluster[atom_index] - center)
+                center: ArrayLike = np.mean(cluster.positions, axis=0)
+                ri: float = np.linalg.norm(cluster.positions[atom_index] - center)
                 radius: float = rng.uniform(0.01, 0.10) * ri
                 direction: ArrayLike = rng.normal(size=3)
                 direction /= np.linalg.norm(direction)
-                cluster[atom_index] = center + radius * direction
+                cluster.positions[atom_index] = center + radius * direction
 
         return cluster
 
@@ -115,7 +115,7 @@ class GeneticAlgorithm:
                 i -= 1
             else:
                 j += 1
-        return Cluster(np.concat([p1[idx1[:i]], p2[idx2[i:]]]))
+        return Cluster(np.concatenate([p1[idx1[:i]], p2[idx2[i:]]]))
 
     def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> Cluster:
         rng = np.random.default_rng()
