@@ -3,6 +3,7 @@ from typing import Callable
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
+from numpy.typing import ArrayLike
 
 
 class GeneticAlgorithm:
@@ -19,8 +20,71 @@ class GeneticAlgorithm:
         w = np.exp(-betaE)
         w /= w.sum()
         return w
+    
+    def mutate(self, cluster: ArrayLike) -> ArrayLike:
+        rng = np.random.default_rng()
+        choice: int = rng.integers(0, 5)
+        N: int = cluster.shape[0]
 
-    def mutate(self, cluster: Cluster) -> Cluster:
+        # the distance to the nearest neighbour of the ith atom
+        def nn_dist(i: int) -> float:
+            diff: ArrayLike = cluster - cluster[i]
+            dists: ArrayLike = np.linalg.norm(diff, axis=1)
+            dists[i] = np.inf
+            return np.min(dists)
+
+        match choice:
+            # Angular operator
+            case 0:
+                noAtoms: int = rng.integers(1, max(2, int(N / 20) + 1)) # 1-5%, otherwise take 1 as default
+                chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
+                center: ArrayLike = np.mean(cluster, axis=0)
+                for i in chosenAtoms:
+                    radius: float = np.linalg.norm(cluster[i] - center)
+                    direction: ArrayLike = rng.normal(size=3)
+                    direction /= np.linalg.norm(direction)
+                    cluster[i] = center + radius * direction
+            # Cartesian Displacement Operator
+            case 1:
+                S: float = 0.2
+                noAtoms: int = rng.integers(1, N + 1)
+                chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
+                for i in chosenAtoms:
+                    rmin: float = nn_dist(i)
+                    displacement: ArrayLike = rng.uniform(-1.0, 1.0, size=3)
+                    cluster[i] += (S * rmin) * displacement
+            # Dynamic Mutation
+            case 2:
+                gamma: float = 0.10
+                cluster *= rng.uniform(1.0 - gamma, 1.0 + gamma, size=(N, 3))
+            # Geometric Center Displacement Operator
+            case 3:
+                amax: float = 0.2
+                amin: float = 0.7
+                w: float = 2.0
+
+                center: ArrayLike = np.mean(cluster, axis=0)
+                rMax: float = np.max(np.linalg.norm(cluster - center, axis=1))
+
+                noAtoms: int = rng.integers(1, N + 1)
+                chosenAtoms: ArrayLike = rng.choice(N, size=noAtoms, replace=False)
+
+                for i in chosenAtoms:
+                    ri: float = np.linalg.norm(cluster[i] - center)
+                    rmin: float = nn_dist(i)
+                    direction: ArrayLike = rng.normal(size=3)
+                    direction /= np.linalg.norm(direction)
+                    cluster[i] += ((amax - amin) * (ri / rMax)**w + amin) * rmin * direction
+            # Interior Operator
+            case 4:
+                atom_index: int = rng.integers(0, N)
+                center: ArrayLike = np.mean(cluster, axis=0)
+                ri: float = np.linalg.norm(cluster[atom_index] - center)
+                radius: float = rng.uniform(0.01, 0.10) * ri
+                direction: ArrayLike = rng.normal(size=3)
+                direction /= np.linalg.norm(direction)
+                cluster[atom_index] = center + radius * direction
+
         return cluster
 
     def mate(self, cluster1: Cluster, cluster2: Cluster) -> Cluster:
