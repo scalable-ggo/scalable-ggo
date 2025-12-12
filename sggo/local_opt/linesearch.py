@@ -1,12 +1,11 @@
-from numpy.typing import ArrayLike
+import cupy as cp
 
 from sggo.cluster import Cluster
 from sggo.energy import Energy
+from sggo.types import NDArray
 
-import cupy as cp
 
-
-def linesearch_wolfe(cluster: Cluster, energy: Energy, direction: ArrayLike, c1: float, c2: float) -> float:
+def linesearch_wolfe(cluster: Cluster, energy: Energy, direction: NDArray, c1: float, c2: float) -> float:
     xp = cp.get_array_module(cluster.positions, direction)
     search_cluster = cluster.copy()
 

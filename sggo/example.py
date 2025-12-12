@@ -1,5 +1,6 @@
 import numpy as np
+from sggo.types import NDArray
 
 
-def foo(x: np.typing.ArrayLike) -> np.typing.ArrayLike:
+def foo(x: NDArray) -> NDArray:
     return x + np.asarray(42)
