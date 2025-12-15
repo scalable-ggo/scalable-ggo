@@ -16,15 +16,13 @@ def idk2() -> float:
 
 def main():
 
-    num_candidates = 3     
+    num_candidates = 3
     num_atoms = 30
-    R = 5.0                 
 
     ga = GeneticAlgorithm(
         num_candidates=num_candidates,
         local_optimizer=FIRECPU(LJCPU()),
         mating_distribution=idk2,
-        r=R,
     )
 
     clusters = [ga.find_minimum(num_atoms, 100)]

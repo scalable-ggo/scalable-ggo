@@ -7,11 +7,10 @@ from numpy.typing import ArrayLike
 
 
 class GeneticAlgorithm:
-    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float], r: float):
+    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float]):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
         self.mating_distribution = mating_distribution
-        self.r = r
     
     def boltzmann_weights(self, energies):
         e = np.array(energies)
@@ -121,7 +120,7 @@ class GeneticAlgorithm:
         rng = np.random.default_rng()
         energy_fn = self.local_optimizer.energy.energy
 
-        clusters = [Cluster.generate(num_atoms, energy_fn, self.r) for _ in range(self.num_candidates)]
+        clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
         energies = []
 
         for i, cl in enumerate(clusters):
@@ -148,6 +147,8 @@ class GeneticAlgorithm:
 
             if rng.random() < mutation_rate:
                 child = self.mutate(child)
+
+            child.ensure_seperation()
 
             child_relaxed = self.local_optimizer.local_min(child)
             child_energy = energy_fn(child_relaxed)
