@@ -24,6 +24,9 @@ class Cluster:
 
     __hash__ = None
 
+    def __repr__(self) -> str:
+        return f"Cluster({self.positions})"
+
     def copy(self) -> "Cluster":
         return Cluster(self.positions)
 
