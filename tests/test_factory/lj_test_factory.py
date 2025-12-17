@@ -1,8 +1,8 @@
-import os
 import unittest
 
 import cupy as cp
 import numpy as np
+import numpy.testing as npt
 from ase import Atoms
 from ase.calculators.lj import LennardJones
 from hypothesis import given, settings
@@ -33,7 +33,7 @@ def create(lj: LJ):
             utils.assert_ndarray_on_cpu(self, energy)
             self.assertEqual(energy.shape, (1,))
             self.assertEqual(energy.dtype, np.float32)
-            self.assertTrue(np.allclose(energy, energy_ase, rtol=1e-3))
+            npt.assert_allclose(energy, energy_ase, rtol=1e-3)
 
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.cpu_cluster())
@@ -47,7 +47,7 @@ def create(lj: LJ):
             utils.assert_ndarray_on_cpu(self, energies)
             self.assertEqual(energies.shape, (len(cluster.positions),))
             self.assertEqual(energies.dtype, np.float32)
-            self.assertTrue(np.allclose(energies, energies_ase, rtol=1e-3))
+            npt.assert_allclose(energies, energies_ase, rtol=1e-3)
 
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.cpu_cluster())
@@ -61,9 +61,9 @@ def create(lj: LJ):
             utils.assert_ndarray_on_cpu(self, energy_gradient)
             self.assertEqual(energy_gradient.shape, (len(cluster.positions), 3))
             self.assertEqual(energy_gradient.dtype, np.float32)
-            self.assertTrue(np.allclose(energy_gradient, energy_gradient_ase, rtol=1e-3))
+            npt.assert_allclose(energy_gradient, energy_gradient_ase, rtol=1e-3)
 
-        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
+        @utils.skip_in_ci
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energy_agrees_gpu(self, cluster: Cluster):
@@ -78,7 +78,7 @@ def create(lj: LJ):
             self.assertEqual(energy.dtype, cp.float32)
             self.assertTrue(cp.allclose(energy, energy_ase, rtol=1e-3))
 
-        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
+        @utils.skip_in_ci
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energies_agrees_gpu(self, cluster: Cluster):
@@ -93,7 +93,7 @@ def create(lj: LJ):
             self.assertEqual(energies.dtype, cp.float32)
             self.assertTrue(cp.allclose(energies, energies_ase, rtol=1e-3))
 
-        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
+        @utils.skip_in_ci
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energy_gradient_agrees_gpu(self, cluster: Cluster):
