@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import cupy as cp
@@ -22,7 +23,7 @@ class TestBFGSCPU(local_opt_test_factory.create(bfgs_cpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available(), "GPU not available")
+@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
 @unittest.skip("bfgs is currently not reliable")
 class TestBFGSGPU(local_opt_test_factory.create(bfgs_gpu)):
     pass

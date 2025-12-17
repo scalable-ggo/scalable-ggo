@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import cupy as cp
@@ -19,11 +20,11 @@ class TestLJCPU(lj_test_factory.create(lj_cpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available(), "GPU not available")
+@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
 class TestLJGPU(lj_test_factory.create(lj_gpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available(), "GPU not available")
+@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
 class TestLJGPUKernel(lj_test_factory.create(lj_gpukernel)):
     pass

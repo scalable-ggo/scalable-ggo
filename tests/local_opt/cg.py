@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import cupy as cp
@@ -20,7 +21,7 @@ class TestCGCPU(local_opt_test_factory.create(cg_cpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available(), "GPU not available")
+@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
 class TestCGGPU(local_opt_test_factory.create(cg_gpu)):
     pass
 

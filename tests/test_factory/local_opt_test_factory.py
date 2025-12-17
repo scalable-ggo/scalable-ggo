@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import cupy as cp
@@ -31,7 +32,7 @@ def create(local_opt: LocalOpt):
             if len(cluster.positions) > 1:
                 self.assertLess(np.max(energy.energies(cluster_min)), -0.5 + 5e-4)
 
-        @unittest.skipIf(not cp.is_available(), "GPU not available")
+        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
         @settings(max_examples=10, deadline=None)
         @given(cluster=utils.gpu_cluster(max_size=64))
         def test_local_min_gpu(self, cluster: Cluster):

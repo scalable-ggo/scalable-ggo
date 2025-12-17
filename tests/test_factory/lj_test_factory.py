@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import cupy as cp
@@ -62,7 +63,7 @@ def create(lj: LJ):
             self.assertEqual(energy_gradient.dtype, np.float32)
             self.assertTrue(np.allclose(energy_gradient, energy_gradient_ase, rtol=1e-3))
 
-        @unittest.skipIf(not cp.is_available(), "GPU not available")
+        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energy_agrees_gpu(self, cluster: Cluster):
@@ -77,7 +78,7 @@ def create(lj: LJ):
             self.assertEqual(energy.dtype, cp.float32)
             self.assertTrue(cp.allclose(energy, energy_ase, rtol=1e-3))
 
-        @unittest.skipIf(not cp.is_available(), "GPU not available")
+        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energies_agrees_gpu(self, cluster: Cluster):
@@ -92,7 +93,7 @@ def create(lj: LJ):
             self.assertEqual(energies.dtype, cp.float32)
             self.assertTrue(cp.allclose(energies, energies_ase, rtol=1e-3))
 
-        @unittest.skipIf(not cp.is_available(), "GPU not available")
+        @unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
         @settings(max_examples=50, deadline=None)
         @given(cluster=utils.gpu_cluster())
         def test_energy_gradient_agrees_gpu(self, cluster: Cluster):
