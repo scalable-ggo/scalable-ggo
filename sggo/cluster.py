@@ -14,6 +14,16 @@ class Cluster:
     def __init__(self, positions: NDArray) -> None:
         self.positions = positions
 
+    def __eq__(self, other: "Cluster") -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        if not isinstance(other.positions, self.positions.__class__):
+            return False
+
+        return (self.positions == other.positions).all()
+
+    __hash__ = None
+
     def copy(self) -> "Cluster":
         return Cluster(self.positions)
 
