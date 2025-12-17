@@ -19,7 +19,7 @@ void pairwise_energy(const uint32_t n, const float (* __restrict__ x)[3], float 
 
         energy = 2.f * (c6 * c6 - c6);
     } else {
-        energy = 0.0;
+        energy = 0.f;
     }
 
     #pragma unroll
@@ -36,12 +36,12 @@ void pairwise_energy(const uint32_t n, const float (* __restrict__ x)[3], float 
     uint32_t warplines = blockDim.x / warpSize;
 
     if (id2 < warplines) {
-        uint32_t mask = (1u<<warplines)    - 1;
+        uint32_t mask = (1u<<warplines) - 1;
 
         energy = sums[id2];
 
         #pragma unroll
-        for (uint32_t i = warplines >> 1; i > 0; i >>= 1) {
+        for (uint32_t i = warpSize >> 1; i > 0; i >>= 1) {
             energy += __shfl_down_sync(mask, energy, i);
         }
     }
