@@ -18,7 +18,7 @@ void pairwise_force(const uint32_t n, const float (* __restrict__ x)[3], float (
 
         float c2 = 1.f / (dx * dx + dy * dy + dz * dz);
         float c6 = c2 * c2 * c2;
-        float mag = -24.f * (2.f * c6 * c6  - c6) * c2;
+        float mag = -24.f * (2.f * c6 * c6 - c6) * c2;
 
         fx = mag * dx;
         fy = mag * dy;
@@ -47,14 +47,14 @@ void pairwise_force(const uint32_t n, const float (* __restrict__ x)[3], float (
     uint32_t warplines = blockDim.x / warpSize;
 
     if (id2 < warplines) {
-        uint32_t mask = (1u<<warplines)    - 1;
+        uint32_t mask = (1u<<warplines) - 1;
 
         fx = sums[id2][0];
         fy = sums[id2][1];
         fz = sums[id2][2];
 
         #pragma unroll
-        for (uint32_t i = warplines >> 1; i > 0; i >>= 1) {
+        for (uint32_t i = warpSize >> 1; i > 0; i >>= 1) {
             fx += __shfl_down_sync(mask, fx, i);
             fy += __shfl_down_sync(mask, fy, i);
             fz += __shfl_down_sync(mask, fz, i);

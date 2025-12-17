@@ -24,7 +24,6 @@ def main():
         num_candidates=num_candidates,
         local_optimizer=FIRECPU(LJCPU()),
         mating_distribution=idk2,
-        r=R,
         operators=[j for j in range(0,i)]
     )
         clusters, energy = ga.find_minimum(num_atoms, 100)

@@ -11,9 +11,9 @@ class Energy(ABC):
     def energies(self, cluster: Cluster) -> NDArray:
         raise NotImplementedError("Please Implement this method")
 
-    def energy(self, cluster: Cluster) -> float:
+    def energy(self, cluster: Cluster) -> NDArray:
         xp = cp.get_array_module(cluster.positions)
-        return xp.sum(self.energies(cluster))
+        return xp.sum(self.energies(cluster), keepdims=True)
 
     @abstractmethod
     def energy_gradient(self, cluster: Cluster) -> NDArray:
