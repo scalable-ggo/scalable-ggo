@@ -1,5 +1,10 @@
 name: analysis
-on: [push, pull_request]
+
+on: [push]
+
+env:
+  SGGO_CI: 1
+
 jobs:
   linter:
     runs-on: ubuntu-latest

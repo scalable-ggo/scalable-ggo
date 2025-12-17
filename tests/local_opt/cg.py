@@ -1,10 +1,8 @@
-import os
-import unittest
 
-import cupy as cp
 
 from sggo.energy import lj
 from sggo.local_opt import cg
+from tests import utils
 from tests.test_factory import local_opt_test_factory
 
 energy = lj.create()
@@ -21,7 +19,7 @@ class TestCGCPU(local_opt_test_factory.create(cg_cpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
+@utils.skip_in_ci
 class TestCGGPU(local_opt_test_factory.create(cg_gpu)):
     pass
 

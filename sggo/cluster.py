@@ -3,6 +3,7 @@ import random
 
 import cupy as cp
 import numpy as np
+from typing import Callable, Optional
 
 from sggo import gpu_utils
 from sggo.types import NDArray
@@ -88,12 +89,15 @@ class Cluster:
         self.positions = gpu_utils.assimilar(positions, self.positions)
 
     @staticmethod
-    def generate(num_atoms: int, density: float = 1, seperation: float = 0.1) -> "Cluster":
+    def generate(num_atoms: int, density: float = 1, seperation: float = 0.1,
+                 rng: Optional[Callable[[float, float, int], NDArray]] = None) -> "Cluster":
+        if rng is None:
+            rng = lambda lo, hi, size: np.random.uniform(lo, hi, size).astype(np.float32)
         maxr3 = 3 * num_atoms / 4 / np.pi / density
 
-        distance = np.cbrt(np.random.uniform(0, maxr3, num_atoms).astype(np.float32))
-        angle = np.random.uniform(0, 2 * np.pi, num_atoms).astype(np.float32)
-        zuniform = np.random.uniform(-1, 1, num_atoms).astype(np.float32)
+        distance = np.cbrt(rng(0, maxr3, num_atoms))
+        angle = rng(0, 2 * np.pi, num_atoms)
+        zuniform = rng(-1, 1, num_atoms)
 
         rsurface = np.sqrt(1 - zuniform ** 2)
         z = zuniform * distance

@@ -1,10 +1,9 @@
-import os
 import unittest
 
-import cupy as cp
 
 from sggo.energy import lj
 from sggo.local_opt import bfgs
+from tests import utils
 from tests.test_factory import local_opt_test_factory
 
 energy = lj.create()
@@ -23,7 +22,7 @@ class TestBFGSCPU(local_opt_test_factory.create(bfgs_cpu)):
     pass
 
 
-@unittest.skipIf(not cp.is_available() or "CI" in os.environ, "GPU not available")
+@utils.skip_in_ci
 @unittest.skip("bfgs is currently not reliable")
 class TestBFGSGPU(local_opt_test_factory.create(bfgs_gpu)):
     pass
