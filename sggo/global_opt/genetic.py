@@ -4,15 +4,22 @@ from typing import Callable
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
 from numpy.typing import ArrayLike
-from numpy.typing import ArrayLike
+from enum import IntEnum
 
+class MutationOperator(IntEnum):
+    ANGULAR = 0
+    CARTESIAN = 1
+    DYNAMIC = 2
+    GEOMETRIC_CENTER = 3
+    INTERIOR = 4
 
 class GeneticAlgorithm:
-    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float], r: float):
+    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float], r: float, operators: list[int | MutationOperator] | None = None):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
         self.mating_distribution = mating_distribution
         self.r = r
+        self.operators = operators
     
     def boltzmann_weights(self, energies):
         e = np.array(energies)
@@ -23,8 +30,12 @@ class GeneticAlgorithm:
         return w
     
     def mutate(self, cluster: Cluster) -> Cluster:
+        choice: int
         rng = np.random.default_rng()
-        choice: int = rng.integers(0, 5)
+        if self.operators is not None and len(self.operators) != 0:
+            choice = [int(op) for op in self.operators]
+        else:
+            return cluster
         N: int = cluster.positions.shape[0]
 
         # the distance to the nearest neighbour of the ith atom
@@ -118,7 +129,7 @@ class GeneticAlgorithm:
                 j += 1
         return Cluster(np.concatenate([p1[idx1[:i]], p2[idx2[i:]]]))
 
-    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> Cluster:
+    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> tuple[Cluster, float]:
         rng = np.random.default_rng()
         energy_fn = self.local_optimizer.energy.energy
 
@@ -170,4 +181,4 @@ class GeneticAlgorithm:
                     best_energy = child_energy
                     best_cluster = child_relaxed.copy()
 
-        return best_cluster
+        return best_cluster, best_energy
