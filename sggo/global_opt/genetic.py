@@ -21,7 +21,7 @@ class GeneticAlgorithm:
         self.operators = operators
     
     def boltzmann_weights(self, energies):
-        e = np.array(energies)
+        e = np.asarray(energies, dtype=float).ravel()
         emin = e.min()
         betaE = (e - emin)
         w = np.exp(-betaE)
@@ -32,7 +32,7 @@ class GeneticAlgorithm:
         choice: int
         rng = np.random.default_rng()
         if self.operators is not None and len(self.operators) != 0:
-            choice = [int(op) for op in self.operators]
+            choice = rng.choice([int(op) for op in self.operators])
         else:
             return cluster
         N: int = cluster.positions.shape[0]
@@ -128,7 +128,7 @@ class GeneticAlgorithm:
                 j += 1
         return Cluster(np.concatenate([p1[idx1[:i]], p2[idx2[i:]]]))
 
-    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> tuple[Cluster, float]:
+    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.15, energy_resolution: float = 1e-3) -> tuple[Cluster, float]:
         rng = np.random.default_rng()
         energy_fn = self.local_optimizer.energy.energy
 
@@ -145,7 +145,7 @@ class GeneticAlgorithm:
         best_cluster = clusters[best_idx].copy()
         best_energy = energies[best_idx]
 
-        for _ in range(num_epochs):
+        for curr_epoch in range(num_epochs):
             weights = self.boltzmann_weights(energies)
             i1 = rng.choice(len(clusters), p=weights)
             i2 = rng.choice(len(clusters), p=weights)
@@ -157,7 +157,7 @@ class GeneticAlgorithm:
 
             child = self.mate(parent1, parent2)
 
-            if rng.random() < mutation_rate:
+            if rng.random() < mutation_rate * (1 - curr_epoch/num_epochs):
                 child = self.mutate(child)
 
             child.ensure_seperation()
