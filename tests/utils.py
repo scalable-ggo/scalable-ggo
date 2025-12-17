@@ -24,11 +24,13 @@ def gpu_cluster(draw, max_size: int = 128) -> Cluster:
 
 
 def assert_cluster_on_cpu(testcase: TestCase, cluster: Cluster):
-    testcase.assertIsInstance(cluster.positions, np.ndarary)
+    testcase.assertIsInstance(cluster, Cluster)
+    testcase.assertIsInstance(cluster.positions, np.ndarray)
 
 
 def assert_cluster_on_gpu(testcase: TestCase, cluster: Cluster):
-    testcase.assertIsInstance(cluster.positions, cp.ndarary)
+    testcase.assertIsInstance(cluster, Cluster)
+    testcase.assertIsInstance(cluster.positions, cp.ndarray)
 
 
 def assert_ndarray_on_cpu(testcase: TestCase, ndarray: NDArray):
