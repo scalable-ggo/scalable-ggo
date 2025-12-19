@@ -1,9 +1,9 @@
 import heapq
 import random
+from typing import Callable, Optional
 
 import cupy as cp
 import numpy as np
-from typing import Callable, Optional
 
 from sggo import gpu_utils
 from sggo.types import NDArray
@@ -46,7 +46,7 @@ class Cluster:
             cube_len = 1
 
             def push_cube(heap, cube_len):
-                cube_dist = cube_len ** 2
+                cube_dist = cube_len**2
                 for j in range(-cube_len, cube_len + 1):
                     for k in range(-cube_len, cube_len + 1):
                         heapq.heappush(heap, (cube_dist, [-cube_len, j, k]))
@@ -64,7 +64,7 @@ class Cluster:
 
             found = False
             while not found:
-                if len(heap) == 0 or cube_len ** 2 <= heap[0][0]:
+                if len(heap) == 0 or cube_len**2 <= heap[0][0]:
                     push_cube(heap, cube_len)
                     cube_len += 1
 
@@ -89,8 +89,9 @@ class Cluster:
         self.positions = gpu_utils.assimilar(positions, self.positions)
 
     @staticmethod
-    def generate(num_atoms: int, density: float = 1, seperation: float = 0.1,
-                 rng: Optional[Callable[[float, float, int], NDArray]] = None) -> "Cluster":
+    def generate(
+        num_atoms: int, density: float = 1, seperation: float = 0.1, rng: Optional[Callable[[float, float, int], NDArray]] = None
+    ) -> "Cluster":
         if rng is None:
             rng = lambda lo, hi, size: np.random.uniform(lo, hi, size).astype(np.float32)
         maxr3 = 3 * num_atoms / 4 / np.pi / density
@@ -99,7 +100,7 @@ class Cluster:
         angle = rng(0, 2 * np.pi, num_atoms)
         zuniform = rng(-1, 1, num_atoms)
 
-        rsurface = np.sqrt(1 - zuniform ** 2)
+        rsurface = np.sqrt(1 - zuniform**2)
         z = zuniform * distance
         x = rsurface * np.cos(angle) * distance
         y = rsurface * np.sin(angle) * distance
@@ -112,5 +113,7 @@ class Cluster:
     def save(self, name: str = "cluster.atoms") -> None:
         np.savetxt(name, cp.asnumpy(self.positions), fmt="%.10f")
 
-    def load(self, name: str = "cluster.atoms") -> None:
-        self.positions = np.loadtxt(name, dtype=np.float32)
+    @classmethod
+    def load(cls, name: str = "cluster.atoms") -> "Cluster":
+        positions = np.loadtxt(name, dtype=np.float32)
+        return cls(positions)
