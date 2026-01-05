@@ -10,12 +10,13 @@ from sggo.local_opt import LocalOpt
 TAG_MSG = 1
 TAG_EXIT = 2
 
+
 class GeneticAlgorithm:
     def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float]):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
         self.mating_distribution = mating_distribution
-    
+
     def boltzmann_weights(self, energies):
         e = np.array(energies)
         emin = e.min()
@@ -23,7 +24,7 @@ class GeneticAlgorithm:
         w = np.exp(-betaE)
         w /= w.sum()
         return w
-    
+
     def mutate(self, cluster: ArrayLike) -> ArrayLike:
         rng = np.random.default_rng()
         choice: int = rng.integers(0, 5)
@@ -235,4 +236,3 @@ class GeneticAlgorithm:
                 child_energy = energy_fn(child_relaxed)
 
                 comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest = 0, tag=TAG_MSG)
-
