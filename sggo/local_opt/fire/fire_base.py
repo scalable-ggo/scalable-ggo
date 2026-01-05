@@ -12,7 +12,7 @@ class FIRE(LocalOpt):
     nmin: int
     finc: float
     fdec: float
-    astart: float
+    a_start: float
     fa: float
 
     def __init__(

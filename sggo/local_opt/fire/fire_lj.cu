@@ -20,8 +20,8 @@ void fire_lj(float (* __restrict__ x)[3])
     float px = x[ind][0], py = x[ind][1], pz = x[ind][2];
     float vx = 0.f, vy = 0.f, vz = 0.f;
 
-    float dt = 0.1f;
-    float a = 0.1f;
+    float dt = DT_START;
+    float a = A_START;
     uint32_t step = 0;
 
     pos[ind][0] = px;
@@ -30,7 +30,7 @@ void fire_lj(float (* __restrict__ x)[3])
 
     __syncthreads();
 
-    for (uint32_t itr = 0; itr < 10000; itr++) {
+    for (uint32_t itr = 0; itr < MAX_STEPS; itr++) {
         float fx = 0.f, fy = 0.f, fz = 0.f;
 
         for (uint32_t i = 0; i < blockDim.x; i++) {
@@ -49,7 +49,7 @@ void fire_lj(float (* __restrict__ x)[3])
             fz += mag * dz;
         }
 
-        bool conv = fx * fx + fy * fy + fz * fz < 0.01;
+        bool conv = fx * fx + fy * fy + fz * fz < TARGET_GRADIENT * TARGET_GRADIENT;
         conv = __all_sync(mask, conv);
 
         float vf = fx * vx + fy * vy + fz * vz;
@@ -105,17 +105,17 @@ void fire_lj(float (* __restrict__ x)[3])
             vy = (1 - a) * vz + a * fy * vf_ratio;
             vz = (1 - a) * vz + a * fz * vf_ratio;
 
-            if (step > 5) {
-                dt *= 1.1f;
-                dt = dt > 1.f ? 1.f : dt;
-                a *= 0.99;
+            if (step > NMIN) {
+                dt *= FINC;
+                dt = dt > DTMAX ? DTMAX : dt;
+                a *= FA;
             } else {
                 step++;
             }
         } else {
             vx = 0.f, vy = 0.f, vz = 0.f;
-            a = 0.1f;
-            dt *= 0.5f;
+            a = A_START;
+            dt *= FDEC;
             step = 0;
         }
 
@@ -147,7 +147,7 @@ void fire_lj(float (* __restrict__ x)[3])
 
             if (ind == 0) {
                 step = sqrtf(step);
-                step_ratio_shared = step > 0.2f ? 0.2f / step : 1.f;
+                step_ratio_shared = step > MAXSTEP ? MAXSTEP / step : 1.f;
             }
         }
 
