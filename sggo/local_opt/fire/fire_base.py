@@ -26,7 +26,7 @@ class FIRE(LocalOpt):
         finc: float = 1.1,
         fdec: float = 0.5,
         a_start: float = 0.1,
-        fa: float = 0.1,
+        fa: float = 0.99,
     ) -> None:
         super(FIRE, self).__init__(energy)
         self.maxstep = maxstep
