@@ -1,10 +1,14 @@
-import numpy as np
 from typing import Callable
+
+import numpy as np
+from mpi4py import MPI
+from numpy.typing import ArrayLike
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
-from numpy.typing import ArrayLike
 
+TAG_MSG = 1
+TAG_EXIT = 2
 
 class GeneticAlgorithm:
     def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float]):
@@ -117,57 +121,117 @@ class GeneticAlgorithm:
         return Cluster(np.concat([p1[idx1[:i]], p2[idx2[i:]]]))
 
     def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.05, energy_resolution: float = 1e-3) -> Cluster:
+        comm = MPI.COMM_WORLD
+        rank = comm.rank
+        size = comm.size
+
         rng = np.random.default_rng()
-        energy_fn = self.local_optimizer.energy.energy
+        energy_fn = lambda cluster: np.squeeze(self.local_optimizer.energy.energy(cluster))
 
-        clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
-        energies = []
+        if rank == 0:
+            clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
+            energies = []
 
-        for i, cl in enumerate(clusters):
-            relaxed = self.local_optimizer.local_min(cl)
-            E = energy_fn(relaxed)
-            energies.append(E)
-            clusters[i] = relaxed  
+            for i, cl in enumerate(clusters):
+                relaxed = self.local_optimizer.local_min(cl)
+                E = energy_fn(relaxed)
+                energies.append(E)
+                clusters[i] = relaxed
 
-        best_idx = int(np.argmin(energies))
-        best_cluster = clusters[best_idx].copy()
-        best_energy = energies[best_idx]
+            best_idx = int(np.argmin(energies))
+            best_cluster = clusters[best_idx].copy()
+            best_energy = energies[best_idx]
 
-        for _ in range(num_epochs):
-            weights = self.boltzmann_weights(energies)
-            i1 = rng.choice(len(clusters), p=weights)
-            i2 = rng.choice(len(clusters), p=weights)
-            while i2 == i1:
+            for i in range(1, size):
+                weights = self.boltzmann_weights(energies)
+                i1 = rng.choice(len(clusters), p=weights)
                 i2 = rng.choice(len(clusters), p=weights)
+                while i2 == i1:
+                    i2 = rng.choice(len(clusters), p=weights)
 
-            parent1 = clusters[i1]
-            parent2 = clusters[i2]
+                parent1 = clusters[i1]
+                parent2 = clusters[i2]
+                comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=i, tag=TAG_MSG)
 
-            child = self.mate(parent1, parent2)
+            epochs = size - 1
 
-            if rng.random() < mutation_rate:
-                child = self.mutate(child)
+            for _i in range(num_epochs):
+                weights = self.boltzmann_weights(energies)
+                i1 = rng.choice(len(clusters), p=weights)
+                i2 = rng.choice(len(clusters), p=weights)
+                while i2 == i1:
+                    i2 = rng.choice(len(clusters), p=weights)
 
-            child.ensure_seperation()
+                parent1 = clusters[i1]
+                parent2 = clusters[i2]
 
-            child_relaxed = self.local_optimizer.local_min(child)
-            child_energy = energy_fn(child_relaxed)
+                child_relaxed = None
+                child_energy = None
 
-            duplicate = False
-            for E in energies:
-                if abs(E - child_energy) < energy_resolution:
-                    duplicate = True
+                if size == 1:
+                    child = self.mate(parent1, parent2)
+
+                    if rng.random() < mutation_rate:
+                        child = self.mutate(child)
+
+                    child.ensure_seperation()
+
+                    child_relaxed = self.local_optimizer.local_min(child)
+                    child_energy = energy_fn(child_relaxed)
+                else:
+                    data = np.zeros(3 * num_atoms + 1, dtype=np.float32)
+                    status = MPI.Status()
+
+                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=TAG_MSG, status=status)
+                    if epochs < num_epochs:
+                        comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=status.Get_source(), tag=TAG_MSG)
+                        epochs += 1
+                    else:
+                        comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=TAG_EXIT)
+
+                    child_relaxed = Cluster(data[1:].reshape(-1, 3))
+                    child_energy = data[0]
+
+                duplicate = False
+                for E in energies:
+                    if abs(E - child_energy) < energy_resolution:
+                        duplicate = True
+                        break
+                if duplicate:
+                    continue
+
+                worst_idx = int(np.argmax(energies))
+                if child_energy < energies[worst_idx]:
+                    clusters[worst_idx] = child_relaxed
+                    energies[worst_idx] = child_energy
+
+                    if child_energy < best_energy:
+                        best_energy = child_energy
+                        best_cluster = child_relaxed.copy()
+
+            return best_cluster
+        else:
+            data = np.zeros(2 * 3 * num_atoms, dtype=np.float32)
+            status = MPI.Status()
+
+            while True:
+                comm.Recv(data, source=0, tag=MPI.ANY_TAG, status=status)
+
+                if status.Get_tag() == TAG_EXIT:
                     break
-            if duplicate:
-                continue
 
-            worst_idx = int(np.argmax(energies))
-            if child_energy < energies[worst_idx]:
-                clusters[worst_idx] = child_relaxed
-                energies[worst_idx] = child_energy
+                parent1 = Cluster(data[0:3 * num_atoms].reshape(-1, 3))
+                parent2 = Cluster(data[3 * num_atoms:].reshape(-1, 3))
 
-                if child_energy < best_energy:
-                    best_energy = child_energy
-                    best_cluster = child_relaxed.copy()
+                child = self.mate(parent1, parent2)
 
-        return best_cluster
+                if rng.random() < mutation_rate:
+                    child = self.mutate(child)
+
+                child.ensure_seperation()
+
+                child_relaxed = self.local_optimizer.local_min(child)
+                child_energy = energy_fn(child_relaxed)
+
+                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest = 0, tag=TAG_MSG)
+
