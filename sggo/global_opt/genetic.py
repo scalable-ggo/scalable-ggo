@@ -184,7 +184,8 @@ class GeneticAlgorithm:
 
                     comm.Recv(data, source=MPI.ANY_SOURCE, tag=TAG_MSG, status=status)
                     if epochs < num_epochs:
-                        comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=status.Get_source(), tag=TAG_MSG)
+                        comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT],
+                                  dest=status.Get_source(), tag=TAG_MSG)
                         epochs += 1
                     else:
                         comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=TAG_EXIT)
