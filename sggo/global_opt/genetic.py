@@ -235,4 +235,4 @@ class GeneticAlgorithm:
                 child_relaxed = self.local_optimizer.local_min(child)
                 child_energy = energy_fn(child_relaxed)
 
-                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest = 0, tag=TAG_MSG)
+                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest=0, tag=TAG_MSG)
