@@ -33,10 +33,5 @@ class ClusterPlot:
         )
 
         ax.set_box_aspect([1, 1, 1])
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_zticks([])
-
-        ax.set_facecolor("white")
 
         plt.show()
