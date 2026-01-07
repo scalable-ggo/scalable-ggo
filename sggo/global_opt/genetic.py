@@ -1,3 +1,4 @@
+from enum import IntEnum
 from typing import Callable
 
 import numpy as np
@@ -7,8 +8,10 @@ from numpy.typing import ArrayLike
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
 
-TAG_MSG = 1
-TAG_EXIT = 2
+
+class GAMPITag(IntEnum):
+    TAG_MSG = 1
+    TAG_EXIT = 2
 
 
 class GeneticAlgorithm:
@@ -130,6 +133,7 @@ class GeneticAlgorithm:
         energy_fn = lambda cluster: np.squeeze(self.local_optimizer.energy.energy(cluster))
 
         if rank == 0:
+            # controller process
             clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
             energies = []
 
@@ -143,6 +147,7 @@ class GeneticAlgorithm:
             best_cluster = clusters[best_idx].copy()
             best_energy = energies[best_idx]
 
+            # give all workers an initial task to do
             for i in range(1, size):
                 weights = self.boltzmann_weights(energies)
                 i1 = rng.choice(len(clusters), p=weights)
@@ -152,7 +157,7 @@ class GeneticAlgorithm:
 
                 parent1 = clusters[i1]
                 parent2 = clusters[i2]
-                comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=i, tag=TAG_MSG)
+                comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=i, tag=GAMPITag.TAG_MSG)
 
             epochs = size - 1
 
@@ -170,6 +175,7 @@ class GeneticAlgorithm:
                 child_energy = None
 
                 if size == 1:
+                    # if there is no other processes create a child in the main process
                     child = self.mate(parent1, parent2)
 
                     if rng.random() < mutation_rate:
@@ -183,13 +189,15 @@ class GeneticAlgorithm:
                     data = np.zeros(3 * num_atoms + 1, dtype=np.float32)
                     status = MPI.Status()
 
-                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=TAG_MSG, status=status)
+                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=GAMPITag.TAG_MSG, status=status) # recieve any children finished
                     if epochs < num_epochs:
+                        # assign the next mating task to the finished process
                         comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT],
-                                  dest=status.Get_source(), tag=TAG_MSG)
+                                  dest=status.Get_source(), tag=GAMPITag.TAG_MSG)
                         epochs += 1
                     else:
-                        comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=TAG_EXIT)
+                        # ask the process to exit as the desired number of epochs was reached
+                        comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=GAMPITag.TAG_EXIT)
 
                     child_relaxed = Cluster(data[1:].reshape(-1, 3))
                     child_energy = data[0]
@@ -213,13 +221,14 @@ class GeneticAlgorithm:
 
             return best_cluster
         else:
+            # worker process
             data = np.zeros(2 * 3 * num_atoms, dtype=np.float32)
             status = MPI.Status()
 
             while True:
                 comm.Recv(data, source=0, tag=MPI.ANY_TAG, status=status)
 
-                if status.Get_tag() == TAG_EXIT:
+                if status.Get_tag() == GAMPITag.TAG_EXIT:
                     break
 
                 parent1 = Cluster(data[0:3 * num_atoms].reshape(-1, 3))
@@ -235,4 +244,4 @@ class GeneticAlgorithm:
                 child_relaxed = self.local_optimizer.local_min(child)
                 child_energy = energy_fn(child_relaxed)
 
-                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest=0, tag=TAG_MSG)
+                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest=0, tag=GAMPITag.TAG_MSG)
