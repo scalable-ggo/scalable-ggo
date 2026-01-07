@@ -17,8 +17,7 @@ def create(global_opt: GlobalOpt, num_epochs: int):
         @given(num_atoms=st.integers(min_value=1, max_value=32))
         def test_local_min_cpu(self, num_atoms: int):
             cluster_min = global_opt.find_minimum(num_atoms, num_epochs)
-            cluster_opt = Cluster(np.array([]))
-            cluster_opt.load(f"lj/{num_atoms}")
+            cluster_opt = Cluster.load(f"lj/{num_atoms}")
 
             utils.assert_cluster_on_cpu(self, cluster_min)
             self.assertEqual(cluster_min.positions.shape, (num_atoms, 3))
