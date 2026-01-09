@@ -31,6 +31,6 @@ jobs:
         with:
           python-version: 3.13
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt openmpi # prebuilt openmpi wheel for tests
       - name: Run Tests
         run: python3 -m unittest tests

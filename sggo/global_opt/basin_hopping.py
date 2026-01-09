@@ -1,9 +1,15 @@
-from typing import Tuple
+from enum import IntEnum
+
 import numpy as np
+from mpi4py import MPI
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
-from sggo.types import NDArray
+
+
+class BHMPITag(IntEnum):
+    TAG_MSG = 1
+    TAG_EXIT = 2
 
 
 class BasinHopping:
@@ -18,33 +24,88 @@ class BasinHopping:
 
         return cluster_new
 
-    def find_minimum(self, cluster_start: Cluster, num_epochs: int) -> Tuple[NDArray, Cluster]:
+    def find_minimum(self, num_atoms: int, num_epochs: int) -> Cluster:
+        comm = MPI.COMM_WORLD
+        rank = comm.rank
+        size = comm.size
+
         energy_fn = self.local_optimizer.energy.energy
-
-        cluster_min = self.local_optimizer.local_min(cluster_start)
-        energy_min = energy_fn(cluster_min)
-
-        cluster_current = cluster_start
-        energy_current = energy_min
-
         dr = 0.1
-        kT = 100 * 8.617330337217213e-05  # units.kB
 
-        for step in range(num_epochs):
-            cluster_new = self.mutate(cluster_current, dr)
+        if rank == 0:
+            # controller process
+            cluster_current = Cluster.generate(num_atoms)
+            cluster_min = self.local_optimizer.local_min(cluster_current)
 
-            cluster_opt = self.local_optimizer.local_min(cluster_new)
-            energy_opt = energy_fn(cluster_opt)
+            energy_current = energy_fn(cluster_min)
+            energy_min = energy_current
 
-            if energy_opt < energy_min:
-                cluster_min = cluster_opt
-                energy_min = energy_opt
+            kT = 100 * 8.617330337217213e-05  # units.kB
 
-            accept = np.exp((energy_current - energy_opt) / kT) > np.random.uniform()
-            if accept:
-                cluster_current = cluster_new
-                energy_current = energy_opt
+            # give all workers an initial task to do
+            for i in range(1, size):
+                comm.Send([cluster_current.positions.flatten(), MPI.FLOAT], dest=i, tag=BHMPITag.TAG_MSG)
 
-            print("basin: ", step, energy_opt, energy_min)
+            epochs = size - 1
 
-        return energy_min, cluster_min
+            for step in range(num_epochs):
+                cluster_new = None
+                cluster_opt = None
+                energy_opt = None
+
+                if size == 1:
+                    # if there is no other processes do work in the main process
+                    cluster_new = self.mutate(cluster_current, dr)
+
+                    cluster_opt = self.local_optimizer.local_min(cluster_new)
+                    energy_opt = energy_fn(cluster_opt)
+                else:
+                    data = np.zeros(2 * 3 * num_atoms + 1, dtype=np.float32)
+                    status = MPI.Status()
+
+                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=BHMPITag.TAG_MSG, status=status)
+                    if epochs < num_epochs:
+                        # assign the next task to the finished process
+                        comm.Send([cluster_current.positions.flatten(), MPI.FLOAT],
+                                  dest=status.Get_source(), tag=BHMPITag.TAG_MSG)
+                        epochs += 1
+                    else:
+                        # ask the process to exit as the desired number of epochs was reached
+                        comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=BHMPITag.TAG_EXIT)
+
+                    cluster_new = Cluster(data[1:3 * num_atoms + 1].reshape(-1, 3))
+                    cluster_opt = Cluster(data[3 * num_atoms + 1:].reshape(-1, 3))
+                    energy_opt = data[0]
+
+                if energy_opt < energy_min:
+                    cluster_min = cluster_opt
+                    energy_min = energy_opt
+
+                accept = np.exp((energy_current - energy_opt) / kT) > np.random.uniform()
+                if accept:
+                    cluster_current = cluster_new
+                    energy_current = energy_opt
+
+                print("basin: ", step, energy_opt, energy_min)
+
+            return cluster_min
+        else:
+            # worker process
+            data = np.zeros(3 * num_atoms, dtype=np.float32)
+            status = MPI.Status()
+
+            while True:
+                comm.Recv(data, source=0, tag=MPI.ANY_TAG, status=status)
+
+                if status.Get_tag() == BHMPITag.TAG_EXIT:
+                    break
+
+                cluster_current = Cluster(data.reshape(-1, 3))
+                cluster_new = self.mutate(cluster_current, dr)
+
+                cluster_opt = self.local_optimizer.local_min(cluster_new)
+                energy_opt = energy_fn(cluster_opt)
+
+                comm.Send([np.append(energy_opt, (
+                    cluster_new.positions.flatten(),
+                    cluster_opt.positions.flatten())), MPI.FLOAT], dest=0, tag=BHMPITag.TAG_MSG)

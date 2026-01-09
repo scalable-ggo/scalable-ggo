@@ -11,4 +11,6 @@ ignore = [
     "PLR0914",  # too many local variables
     "B007",     # unused loop control variable
     "E731",     # lambdas
+    "PLR0912",  # too many branches
+    "PLR0915"   # too many statements
 ]
