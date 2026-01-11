@@ -3,12 +3,14 @@ from sggo.energy import Energy
 
 from .fire_base import FIRE
 from .fire_impl import FIREAuto, FIRECPU, FIREGPU
+from .fire_impl_kernel import FIREGPUKernel
 
 
 class FIREVariant(Enum):
     AUTO = 1
     CPU = 2
     GPU = 3
+    GPUKERNEL = 4
 
 
 def create(
@@ -22,7 +24,7 @@ def create(
     finc: float = 1.1,
     fdec: float = 0.5,
     a_start: float = 0.1,
-    fa: float = 0.1,
+    fa: float = 0.99,
 ) -> FIRE:
     kargs = {
         "energy": energy,
@@ -42,3 +44,5 @@ def create(
             return FIRECPU(**kargs)
         case FIREVariant.GPU:
             return FIREGPU(**kargs)
+        case FIREVariant.GPUKERNEL:
+            return FIREGPUKernel(**kargs)

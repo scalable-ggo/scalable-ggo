@@ -4,3 +4,4 @@ numpy==2.3.5
 matplotlib==3.10.7
 hypothesis==6.136.9
 ase==3.26.0
+mpi4py==4.1.1
