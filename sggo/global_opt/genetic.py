@@ -1,10 +1,8 @@
 from enum import IntEnum
 from typing import Callable
-
 import numpy as np
 from mpi4py import MPI
 from numpy.typing import ArrayLike
-
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
 
@@ -12,6 +10,7 @@ from sggo.local_opt import LocalOpt
 class GAMPITag(IntEnum):
     TAG_MSG = 1
     TAG_EXIT = 2
+
 
 class MutationOperator(IntEnum):
     ANGULAR = 0
@@ -21,8 +20,11 @@ class MutationOperator(IntEnum):
     INTERIOR = 4
     RADIAL_SWAP = 5
 
+
 class GeneticAlgorithm:
-    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float], operators: list[int | MutationOperator] | None = None):
+
+    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float],
+                  operators: list[int | MutationOperator] | None = None):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
         self.mating_distribution = mating_distribution
@@ -157,7 +159,8 @@ class GeneticAlgorithm:
                 j += 1
         return Cluster(np.concatenate([p1[idx1[:i]], p2[idx2[i:]]]))
 
-    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.15, energy_resolution: float = 1e-3, target: float | None = None) -> tuple[Cluster, float]:
+    def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.15,
+                      energy_resolution: float = 1e-3, target: float | None = None) -> tuple[Cluster, float]:
         comm = MPI.COMM_WORLD
         rank = comm.rank
         size = comm.size
