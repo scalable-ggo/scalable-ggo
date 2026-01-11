@@ -12,7 +12,6 @@ from sggo.local_opt import LocalOpt
 class GAMPITag(IntEnum):
     TAG_MSG = 1
     TAG_EXIT = 2
-from enum import IntEnum
 
 class MutationOperator(IntEnum):
     ANGULAR = 0
