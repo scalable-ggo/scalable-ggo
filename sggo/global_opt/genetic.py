@@ -161,61 +161,87 @@ class GeneticAlgorithm:
 
     def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.15,
                       energy_resolution: float = 1e-3, target: float | None = None) -> tuple[Cluster, float]:
-        comm = MPI.COMM_WORLD
-        rank = comm.rank
-        size = comm.size
-
         rng = np.random.default_rng()
-        energy_fn = lambda cluster: np.squeeze(self.local_optimizer.energy.energy(cluster))
+        energy_fn = self.local_optimizer.energy.energy
 
         clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
-        energies = []
+        energies = np.empty(self.num_candidates)
 
         for i, cl in enumerate(clusters):
-            relaxed = self.local_optimizer.local_min(cl)
-            E = energy_fn(relaxed)
-            energies.append(E)
-            clusters[i] = relaxed  
+            cl = self.local_optimizer.local_min(cl)
+            clusters[i] = cl
+            energies[i] = energy_fn(cl)
 
-            best_idx = int(np.argmin(energies))
-            best_cluster = clusters[best_idx].copy()
-            best_energy = energies[best_idx]
+        best_idx = int(np.argmin(energies))
+        best_cluster = clusters[best_idx].copy()
+        best_energy = energies[best_idx]
 
-        for _ in range(num_epochs):
-            weights = self.boltzmann_weights(energies)
-            i1 = rng.choice(len(clusters), p=weights)
-            i2 = rng.choice(len(clusters), p=weights)
-            while i2 == i1:
-                i2 = rng.choice(len(clusters), p=weights)
+        k = max(1, self.num_candidates // 5)
 
-            parent1 = clusters[i1]
-            parent2 = clusters[i2]
+        T0 = 1.0
+        Tmin = 1e-3
 
-            child = self.mate(parent1, parent2)
+        last_improvement = 0
+        IMMIGRATION_DELAY = 10
+        IMMIGRATION_FRACTION = 0.1
 
-            if rng.random() < mutation_rate:
-                child = self.mutate(child)
+        for curr_epoch in range(num_epochs):
 
-            child.ensure_seperation()
+            T = max(Tmin, T0 * np.exp(-curr_epoch / (0.3 * num_epochs)))
+            e = energies
+            w = np.exp(-(e - e.min()) / T)
+            w /= w.sum()
+            for _ in range(k):
+                i1 = rng.choice(len(clusters), p=w)
+                w[i1] = 0
+                w = w / w.sum()
+                i2 = rng.choice(len(clusters), p=w)
 
-            child_relaxed = self.local_optimizer.local_min(child)
-            child_energy = energy_fn(child_relaxed)
+                parent1 = clusters[i1]
+                parent2 = clusters[i2]
 
-            duplicate = False
-            for E in energies:
-                if abs(E - child_energy) < energy_resolution:
-                    duplicate = True
-                    break
-            if duplicate:
-                continue
+                child = self.mate(parent1, parent2)
 
-            worst_idx = int(np.argmax(energies))
-            if child_energy < energies[worst_idx]:
-                clusters[worst_idx] = child_relaxed
-                energies[worst_idx] = child_energy
+                p_mut = mutation_rate * np.exp(-curr_epoch / num_epochs)
+                if rng.random() < p_mut:
+                    child = self.mutate(child)
 
-                if child_energy < best_energy:
-                    best_energy = child_energy
-                    best_cluster = child_relaxed.copy()
+                child.ensure_seperation()
 
-        return best_cluster
+                child = self.local_optimizer.local_min(child)
+                child_energy = energy_fn(child)
+
+                if any(abs(E - child_energy) < energy_resolution for E in energies):
+                    if rng.random() < 0.9:
+                        continue
+
+                worst_idx = int(np.argmax(energies))
+                dE = child_energy - energies[worst_idx]
+
+                if dE < 0 or rng.random() < np.exp(-dE / T):
+                    clusters[worst_idx] = child
+                    energies[worst_idx] = child_energy
+
+                    if child_energy < best_energy:
+                        best_energy = child_energy
+                        best_cluster = child.copy()
+                        last_improvement = curr_epoch
+
+            if curr_epoch - last_improvement >= IMMIGRATION_DELAY:
+                num_immigrants = max(1, int(self.num_candidates * IMMIGRATION_FRACTION))
+                worst_indices = np.argsort(energies)[-num_immigrants:]
+
+                for idx in worst_indices:
+                    immigrant = Cluster.generate(num_atoms)
+                    immigrant = self.local_optimizer.local_min(immigrant)
+                    clusters[idx] = immigrant
+                    energies[idx] = energy_fn(immigrant)
+
+                last_improvement = curr_epoch
+
+            if target is not None and abs(best_energy - target) <= 1e-3:
+                print("Target reached in", curr_epoch, "epochs")
+                break
+
+            print(f"Epoch {curr_epoch} | " f"best E={best_energy}")
+        return best_cluster, best_energy
