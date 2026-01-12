@@ -221,6 +221,7 @@ class GeneticAlgorithm:
             for curr_epoch in range(num_epochs):
                 if matings == 0 and workers == 0:
                     break
+                print(f"Epoch {curr_epoch} | " f"best E={best_energy}")
 
                 T = max(Tmin, T0 * np.exp(-curr_epoch / (0.3 * num_epochs)))
                 parent1, parent2 = self.boltzmann_choice(rng, T, energies, clusters)
@@ -285,8 +286,6 @@ class GeneticAlgorithm:
                         energies[idx] = energy
 
                     last_improvement = curr_epoch
-
-                print(f"Epoch {curr_epoch} | " f"best E={best_energy}")
 
                 if target is not None and best_energy <= target and matings > 0:
                     print("Target reached in", curr_epoch, "epochs")
