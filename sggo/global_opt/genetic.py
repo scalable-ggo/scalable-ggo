@@ -286,6 +286,8 @@ class GeneticAlgorithm:
 
                     last_improvement = curr_epoch
 
+                print(f"Epoch {curr_epoch} | " f"best E={best_energy}")
+
                 if target is not None and best_energy <= target and matings > 0:
                     print("Target reached in", curr_epoch, "epochs")
                     matings = 0
