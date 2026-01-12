@@ -219,7 +219,9 @@ class GeneticAlgorithm:
             matings = num_epochs - workers
 
             for curr_epoch in range(num_epochs):
-                print(curr_epoch)
+                if matings == 0 and workers == 0:
+                    break
+
                 T = max(Tmin, T0 * np.exp(-curr_epoch / (0.3 * num_epochs)))
                 parent1, parent2 = self.boltzmann_choice(rng, T, energies, clusters)
 
@@ -238,12 +240,12 @@ class GeneticAlgorithm:
                     comm.Recv(data, source=MPI.ANY_SOURCE, tag=GAMPITag.TAG_MSG, status=status) # recieve any children finished
                     if matings > 0:
                         # assign the next mating task to the finished process
-                        data = np.concatenate((
+                        send_data = np.concatenate((
                             np.array([p_mut]),
                             parent1.positions.flatten(),
                             parent2.positions.flatten()
                         ))
-                        comm.Send([data, MPI.FLOAT], dest=status.Get_source(), tag=GAMPITag.TAG_MSG)
+                        comm.Send([send_data, MPI.FLOAT], dest=status.Get_source(), tag=GAMPITag.TAG_MSG)
                         matings -= 1
                     else:
                         # ask the process to exit as the desired number of epochs was reached
@@ -284,12 +286,9 @@ class GeneticAlgorithm:
 
                     last_improvement = curr_epoch
 
-                if target is not None and abs(best_energy - target) <= 1e-3 and matings > 0:
+                if target is not None and best_energy <= target and matings > 0:
                     print("Target reached in", curr_epoch, "epochs")
                     matings = 0
-
-                if matings == 0 and workers == 0:
-                    break
 
             return best_energy, best_cluster
         else:
@@ -309,5 +308,4 @@ class GeneticAlgorithm:
 
                 child_energy, child_relaxed = create_child(parent1, parent2, p_mut)
                 comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest=0, tag=GAMPITag.TAG_MSG)
-
             return None, None
