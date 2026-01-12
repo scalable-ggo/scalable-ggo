@@ -1,5 +1,4 @@
 from enum import IntEnum
-from typing import Callable
 import numpy as np
 from mpi4py import MPI
 from numpy.typing import ArrayLike
@@ -23,20 +22,11 @@ class MutationOperator(IntEnum):
 
 class GeneticAlgorithm:
 
-    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, mating_distribution: Callable[[], float],
-                  operators: list[int | MutationOperator] | None = None):
+    def __init__(self, num_candidates: int, local_optimizer: LocalOpt, operators: list[int | MutationOperator] | None = None):
         self.num_candidates = num_candidates
         self.local_optimizer = local_optimizer
-        self.mating_distribution = mating_distribution
-    
-    def boltzmann_weights(self, energies):
-        e = np.asarray(energies, dtype=float).ravel()
-        emin = e.min()
-        betaE = (e - emin)
-        w = np.exp(-betaE)
-        w /= w.sum()
-        return w
-    
+        self.operators = operators
+
     def mutate(self, cluster: Cluster) -> Cluster:
         choice: int
         rng = np.random.default_rng()
@@ -159,89 +149,165 @@ class GeneticAlgorithm:
                 j += 1
         return Cluster(np.concatenate([p1[idx1[:i]], p2[idx2[i:]]]))
 
+    def boltzmann_choice(self, rng, temp, energies, clusters):
+        e = np.asarray(energies, dtype=float).ravel()
+        emin = e.min()
+        betaE = (e - emin)
+        w = np.exp(-betaE / temp)
+        w /= w.sum()
+
+        inds = rng.choice(len(energies), p=w, size=2, replace=False)
+        return clusters[inds[0]], clusters[inds[1]]
+
     def find_minimum(self, num_atoms: int, num_epochs: int, mutation_rate: float = 0.15,
                       energy_resolution: float = 1e-3, target: float | None = None) -> tuple[Cluster, float]:
+        comm = MPI.COMM_WORLD
+        rank = comm.rank
+        size = comm.size
+
         rng = np.random.default_rng()
-        energy_fn = self.local_optimizer.energy.energy
+        energy_fn = lambda cluster: np.squeeze(self.local_optimizer.energy.energy(cluster))
 
-        clusters = [Cluster.generate(num_atoms) for _ in range(self.num_candidates)]
-        energies = np.empty(self.num_candidates)
+        def create_child(parent1, parent2, mutation_rate):
+            child = self.mate(parent1, parent2)
 
-        for i, cl in enumerate(clusters):
-            cl = self.local_optimizer.local_min(cl)
-            clusters[i] = cl
-            energies[i] = energy_fn(cl)
+            if rng.random() < mutation_rate:
+                child = self.mutate(child)
 
-        best_idx = int(np.argmin(energies))
-        best_cluster = clusters[best_idx].copy()
-        best_energy = energies[best_idx]
+            child.ensure_seperation()
 
-        k = max(1, self.num_candidates // 5)
+            child_relaxed = self.local_optimizer.local_min(child)
+            child_energy = energy_fn(child_relaxed)
 
-        T0 = 1.0
-        Tmin = 1e-3
+            return child_energy, child_relaxed
 
-        last_improvement = 0
-        IMMIGRATION_DELAY = 10
-        IMMIGRATION_FRACTION = 0.1
+        def create_immigrant():
+            immigrant = Cluster.generate(num_atoms)
+            immigrant_relaxed = self.local_optimizer.local_min(immigrant)
+            immigrant_energy = energy_fn(immigrant_relaxed)
 
-        for curr_epoch in range(num_epochs):
+            return immigrant_energy, immigrant_relaxed
 
-            T = max(Tmin, T0 * np.exp(-curr_epoch / (0.3 * num_epochs)))
-            e = energies
-            w = np.exp(-(e - e.min()) / T)
-            w /= w.sum()
-            for _ in range(k):
-                i1 = rng.choice(len(clusters), p=w)
-                w[i1] = 0
-                w = w / w.sum()
-                i2 = rng.choice(len(clusters), p=w)
+        if rank == 0:
+            # controller process
+            clusters = []
+            energies = []
 
-                parent1 = clusters[i1]
-                parent2 = clusters[i2]
+            for _ in range(self.num_candidates):
+                energy, cluster = create_immigrant()
 
-                child = self.mate(parent1, parent2)
+                clusters.append(cluster)
+                energies.append(energy)
 
-                p_mut = mutation_rate * np.exp(-curr_epoch / num_epochs)
-                if rng.random() < p_mut:
-                    child = self.mutate(child)
+            best_idx = int(np.argmin(energies))
+            best_cluster = clusters[best_idx].copy()
+            best_energy = energies[best_idx]
 
-                child.ensure_seperation()
+            T0 = 1.0
+            Tmin = 1e-3
 
-                child = self.local_optimizer.local_min(child)
-                child_energy = energy_fn(child)
+            last_improvement = 0
+            IMMIGRATION_DELAY = 10 * max(1, self.num_candidates // 5)
+            IMMIGRATION_FRACTION = 0.1
 
-                if any(abs(E - child_energy) < energy_resolution for E in energies):
-                    if rng.random() < 0.9:
-                        continue
+            # give all workers an initial task to do
+            for i in range(1, size):
+                parent1, parent2 = self.boltzmann_choice(rng, T0, energies, clusters)
+                comm.Send([np.append(parent1.positions.flatten(), parent2.positions.flatten()), MPI.FLOAT], dest=i, tag=GAMPITag.TAG_MSG)
+
+            workers = size - 1
+            matings = num_epochs - workers
+
+            for curr_epoch in range(num_epochs):
+                print(curr_epoch)
+                T = max(Tmin, T0 * np.exp(-curr_epoch / (0.3 * num_epochs)))
+                parent1, parent2 = self.boltzmann_choice(rng, T, energies, clusters)
+
+                child_relaxed = None
+                child_energy = None
+
+                p_mut = np.float32(mutation_rate * np.exp(-curr_epoch / num_epochs))
+
+                if size == 1:
+                    # if there is no other processes create a child in the main process
+                    child_energy, child_relaxed = create_child(parent1, parent2, p_mut)
+                else:
+                    data = np.zeros(3 * num_atoms + 1, dtype=np.float32)
+                    status = MPI.Status()
+
+                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=GAMPITag.TAG_MSG, status=status) # recieve any children finished
+                    if matings > 0:
+                        # assign the next mating task to the finished process
+                        data = np.concatenate((
+                            np.array([p_mut]),
+                            parent1.positions.flatten(),
+                            parent2.positions.flatten()
+                        ))
+                        comm.Send([data, MPI.FLOAT], dest=status.Get_source(), tag=GAMPITag.TAG_MSG)
+                        matings -= 1
+                    else:
+                        # ask the process to exit as the desired number of epochs was reached
+                        comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=GAMPITag.TAG_EXIT)
+                        workers -= 1
+
+                    child_relaxed = Cluster(data[1:].reshape(-1, 3))
+                    child_energy = data[0]
+
+                duplicate = False
+                for E in energies:
+                    if abs(E - child_energy) < energy_resolution:
+                        duplicate = True
+                        break
+                if duplicate and rng.random() < 0.9:
+                    continue
 
                 worst_idx = int(np.argmax(energies))
                 dE = child_energy - energies[worst_idx]
 
                 if dE < 0 or rng.random() < np.exp(-dE / T):
-                    clusters[worst_idx] = child
+                    clusters[worst_idx] = child_relaxed
                     energies[worst_idx] = child_energy
 
                     if child_energy < best_energy:
                         best_energy = child_energy
-                        best_cluster = child.copy()
+                        best_cluster = child_relaxed.copy()
                         last_improvement = curr_epoch
 
-            if curr_epoch - last_improvement >= IMMIGRATION_DELAY:
-                num_immigrants = max(1, int(self.num_candidates * IMMIGRATION_FRACTION))
-                worst_indices = np.argsort(energies)[-num_immigrants:]
+                if curr_epoch - last_improvement >= IMMIGRATION_DELAY:
+                    num_immigrants = max(1, int(self.num_candidates * IMMIGRATION_FRACTION))
+                    worst_indices = np.argsort(energies)[-num_immigrants:]
 
-                for idx in worst_indices:
-                    immigrant = Cluster.generate(num_atoms)
-                    immigrant = self.local_optimizer.local_min(immigrant)
-                    clusters[idx] = immigrant
-                    energies[idx] = energy_fn(immigrant)
+                    for idx in worst_indices:
+                        energy, cluster = create_immigrant()
+                        clusters[idx] = cluster
+                        energies[idx] = energy
 
-                last_improvement = curr_epoch
+                    last_improvement = curr_epoch
 
-            if target is not None and abs(best_energy - target) <= 1e-3:
-                print("Target reached in", curr_epoch, "epochs")
-                break
+                if target is not None and abs(best_energy - target) <= 1e-3 and matings > 0:
+                    print("Target reached in", curr_epoch, "epochs")
+                    matings = 0
 
-            print(f"Epoch {curr_epoch} | " f"best E={best_energy}")
-        return best_cluster, best_energy
+                if matings == 0 and workers == 0:
+                    break
+
+            return best_energy, best_cluster
+        else:
+            # worker process
+            data = np.zeros(2 * 3 * num_atoms + 1, dtype=np.float32)
+            status = MPI.Status()
+
+            while True:
+                comm.Recv(data, source=0, tag=MPI.ANY_TAG, status=status)
+
+                if status.Get_tag() == GAMPITag.TAG_EXIT:
+                    break
+
+                p_mut = data[0]
+                parent1 = Cluster(data[1:3 * num_atoms + 1].reshape(-1, 3))
+                parent2 = Cluster(data[3 * num_atoms + 1:].reshape(-1, 3))
+
+                child_energy, child_relaxed = create_child(parent1, parent2, p_mut)
+                comm.Send([np.append(child_energy, child_relaxed.positions.flatten()), MPI.FLOAT], dest=0, tag=GAMPITag.TAG_MSG)
+
+            return None, None

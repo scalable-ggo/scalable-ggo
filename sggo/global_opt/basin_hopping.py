@@ -88,7 +88,7 @@ class BasinHopping:
 
                 print("basin: ", step, energy_opt, energy_min)
 
-            return cluster_min
+            return energy_min, cluster_min
         else:
             # worker process
             data = np.zeros(3 * num_atoms, dtype=np.float32)
@@ -109,3 +109,5 @@ class BasinHopping:
                 comm.Send([np.append(energy_opt, (
                     cluster_new.positions.flatten(),
                     cluster_opt.positions.flatten())), MPI.FLOAT], dest=0, tag=BHMPITag.TAG_MSG)
+
+            return None, None

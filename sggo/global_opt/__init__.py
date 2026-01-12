@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
@@ -11,5 +12,5 @@ class GlobalOpt(ABC):
         self.local_opt = local_opt
 
     @abstractmethod
-    def find_minimum(self, num_atoms: int, num_epochs: int) -> Cluster:
+    def find_minimum(self, num_atoms: int, num_epochs: int) -> Tuple[float, Cluster]:
         raise NotImplementedError()
