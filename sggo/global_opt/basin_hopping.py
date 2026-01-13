@@ -24,7 +24,7 @@ class BasinHopping:
 
         return cluster_new
 
-    def find_minimum(self, num_atoms: int, num_epochs: int) -> Cluster:
+    def find_minimum(self, num_atoms: int, num_epochs: int, target: float | None = None) -> Cluster:
         comm = MPI.COMM_WORLD
         rank = comm.rank
         size = comm.size
@@ -46,9 +46,13 @@ class BasinHopping:
             for i in range(1, size):
                 comm.Send([cluster_current.positions.flatten(), MPI.FLOAT], dest=i, tag=BHMPITag.TAG_MSG)
 
-            epochs = size - 1
+            workers = size - 1
+            hops = num_epochs - workers
 
             for step in range(num_epochs):
+                if hops == 0 and workers == 0:
+                    break
+
                 cluster_new = None
                 cluster_opt = None
                 energy_opt = None
@@ -64,14 +68,15 @@ class BasinHopping:
                     status = MPI.Status()
 
                     comm.Recv(data, source=MPI.ANY_SOURCE, tag=BHMPITag.TAG_MSG, status=status)
-                    if epochs < num_epochs:
+                    if hops > 0:
                         # assign the next task to the finished process
                         comm.Send([cluster_current.positions.flatten(), MPI.FLOAT],
                                   dest=status.Get_source(), tag=BHMPITag.TAG_MSG)
-                        epochs += 1
+                        hops -= 1
                     else:
                         # ask the process to exit as the desired number of epochs was reached
                         comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=BHMPITag.TAG_EXIT)
+                        workers -= 1
 
                     cluster_new = Cluster(data[1:3 * num_atoms + 1].reshape(-1, 3))
                     cluster_opt = Cluster(data[3 * num_atoms + 1:].reshape(-1, 3))
@@ -87,6 +92,10 @@ class BasinHopping:
                     energy_current = energy_opt
 
                 print("basin: ", step, energy_opt, energy_min)
+
+                if target is not None and energy_min <= target + 2e-3 and hops > 0:
+                    print("Target reached in", step, "epochs")
+                    hops = 0
 
             return energy_min, cluster_min
         else:

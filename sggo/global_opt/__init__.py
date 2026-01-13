@@ -12,5 +12,5 @@ class GlobalOpt(ABC):
         self.local_opt = local_opt
 
     @abstractmethod
-    def find_minimum(self, num_atoms: int, num_epochs: int) -> Tuple[float, Cluster]:
+    def find_minimum(self, num_atoms: int, num_epochs: int, target: float | None = None) -> Tuple[float, Cluster]:
         raise NotImplementedError()
