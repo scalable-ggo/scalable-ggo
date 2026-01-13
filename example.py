@@ -9,7 +9,7 @@ energy = lj.create()
 local_opt = fire.create(energy)
 BH = BasinHopping(local_opt)
 
-clustermin = BH.find_minimum(128, 50)
+energymin, clustermin = BH.find_minimum(128, 50)
 if MPI.COMM_WORLD.rank == 0:
     print("Energy: ", energy.energy(clustermin))
     plot = ClusterPlot(clustermin)
