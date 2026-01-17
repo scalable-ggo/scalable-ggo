@@ -20,8 +20,6 @@ class RandomRestartBaseline:
         seed: int | None = None,
         return_history: bool = False,
     ):
-        rng = np.random.default_rng(seed)
-
         best_cluster = None
         best_energy = np.inf
 
@@ -51,7 +49,7 @@ class RandomRestartBaseline:
             seen_energies.append(E)
 
             # 5) keep best
-            if E < best_energy:
+            if best_energy > E:
                 best_energy = E
                 best_cluster = cl_rel.copy()
 
