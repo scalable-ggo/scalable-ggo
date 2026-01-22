@@ -1,10 +1,12 @@
 from enum import IntEnum
+from typing import Tuple
 
 import numpy as np
 from mpi4py import MPI
 
 from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
+from sggo.types import NDArray
 
 
 class BHMPITag(IntEnum):
@@ -24,7 +26,7 @@ class BasinHopping:
 
         return cluster_new
 
-    def find_minimum(self, num_atoms: int, num_epochs: int) -> Cluster:
+    def find_minimum(self, num_atoms: int, num_epochs: int) -> Tuple[NDArray, Cluster]:
         comm = MPI.COMM_WORLD
         rank = comm.rank
         size = comm.size
@@ -66,15 +68,14 @@ class BasinHopping:
                     comm.Recv(data, source=MPI.ANY_SOURCE, tag=BHMPITag.TAG_MSG, status=status)
                     if epochs < num_epochs:
                         # assign the next task to the finished process
-                        comm.Send([cluster_current.positions.flatten(), MPI.FLOAT],
-                                  dest=status.Get_source(), tag=BHMPITag.TAG_MSG)
+                        comm.Send([cluster_current.positions.flatten(), MPI.FLOAT], dest=status.Get_source(), tag=BHMPITag.TAG_MSG)
                         epochs += 1
                     else:
                         # ask the process to exit as the desired number of epochs was reached
                         comm.Send([np.zeros(0), MPI.FLOAT], dest=status.Get_source(), tag=BHMPITag.TAG_EXIT)
 
-                    cluster_new = Cluster(data[1:3 * num_atoms + 1].reshape(-1, 3))
-                    cluster_opt = Cluster(data[3 * num_atoms + 1:].reshape(-1, 3))
+                    cluster_new = Cluster(data[1 : 3 * num_atoms + 1].reshape(-1, 3))
+                    cluster_opt = Cluster(data[3 * num_atoms + 1 :].reshape(-1, 3))
                     energy_opt = data[0]
 
                 if energy_opt < energy_min:
@@ -106,8 +107,10 @@ class BasinHopping:
                 cluster_opt = self.local_optimizer.local_min(cluster_new)
                 energy_opt = energy_fn(cluster_opt)
 
-                comm.Send([np.append(energy_opt, (
-                    cluster_new.positions.flatten(),
-                    cluster_opt.positions.flatten())), MPI.FLOAT], dest=0, tag=BHMPITag.TAG_MSG)
+                comm.Send(
+                    [np.append(energy_opt, (cluster_new.positions.flatten(), cluster_opt.positions.flatten())), MPI.FLOAT],
+                    dest=0,
+                    tag=BHMPITag.TAG_MSG,
+                )
 
             return None, None
