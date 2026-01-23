@@ -4,11 +4,9 @@ This project focuses on **accelerating material discovery** using **Global Geome
 
 The Lennard-Jones potential describes the interaction between pairs of atoms:
 
-\[
-V(r) = 4 \varepsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^6 \right]
-\]
+V(r) = 4 * ε * [ (σ / r)^12 - (σ / r)^6 ]
 
-where \(r\) is the distance, \(\varepsilon\) is the depth of the well, and \(\sigma\) is the distance at which the potential is zero.
+where r is the distance, ε is the depth of the well, and σ is the distance at which the potential is zero.
 
 ---
 
