@@ -287,7 +287,7 @@ class GeneticAlgorithm:
 
                     last_improvement = curr_epoch
 
-                if target is not None and best_energy <= target and matings > 0:
+                if target is not None and best_energy <= target + energy_resolution and matings > 0:
                     print("Target reached in", curr_epoch, "epochs")
                     matings = 0
 
