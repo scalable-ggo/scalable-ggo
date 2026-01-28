@@ -7,7 +7,7 @@ from sggo.cluster import Cluster
 from sggo.local_opt import LocalOpt
 
 
-class RRMPITag(IntEnum):
+class RWMPITag(IntEnum):
     TAG_MSG = 1
     TAG_EXIT = 2
 
@@ -34,7 +34,7 @@ class RandomWalk:
 
             # give all workers an initial task to do
             for i in range(1, size):
-                comm.Send([np.array([0], dtype=np.float32), MPI.FLOAT], dest=i, tag=RRMPITag.TAG_MSG)
+                comm.Send([np.array([0], dtype=np.float32), MPI.FLOAT], dest=i, tag=RWMPITag.TAG_MSG)
 
             workers = size - 1
             hops = num_epochs - workers
@@ -57,17 +57,17 @@ class RandomWalk:
                     data = np.zeros(1 + 3 * num_atoms, dtype=np.float32)
                     status = MPI.Status()
 
-                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=RRMPITag.TAG_MSG, status=status)
+                    comm.Recv(data, source=MPI.ANY_SOURCE, tag=RWMPITag.TAG_MSG, status=status)
 
                     if hops > 0:
                         # assign the next task to the finished process
                         comm.Send([np.zeros(0, dtype=np.float32)],
-                                dest=status.Get_source(), tag=RRMPITag.TAG_MSG)
+                                dest=status.Get_source(), tag=RWMPITag.TAG_MSG)
                         hops -= 1
                     else:
                         # ask the process to exit as the desired number of epochs was reached
                         comm.Send([np.zeros(0, dtype=np.float32), MPI.FLOAT],
-                                dest=status.Get_source(), tag=RRMPITag.TAG_EXIT)
+                                dest=status.Get_source(), tag=RWMPITag.TAG_EXIT)
                         workers -= 1
 
                     energy_opt = float(data[0])
@@ -77,7 +77,7 @@ class RandomWalk:
                     cluster_min = cluster_opt
                     energy_min = energy_opt
 
-                print("rr: ", step, energy_opt, energy_min)
+                print("rw: ", step, energy_opt, energy_min)
 
                 if target is not None and energy_min <= target + 2e-3 and hops > 0:
                     print("Target reached in", step, "epochs")
@@ -93,7 +93,7 @@ class RandomWalk:
             while True:
                 comm.Recv(data, source=0, tag=MPI.ANY_TAG, status=status)
 
-                if status.Get_tag() == RRMPITag.TAG_EXIT:
+                if status.Get_tag() == RWMPITag.TAG_EXIT:
                     break
 
                 cluster_new = Cluster.generate(num_atoms)
@@ -105,7 +105,7 @@ class RandomWalk:
                 comm.Send([np.append(np.float32(energy_opt),
                                     cluster_opt.positions.flatten().astype(np.float32, copy=False)),
                         MPI.FLOAT],
-                        dest=0, tag=RRMPITag.TAG_MSG)
+                        dest=0, tag=RWMPITag.TAG_MSG)
 
             return None, None
 
