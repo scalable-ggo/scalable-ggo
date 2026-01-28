@@ -61,7 +61,7 @@ class RandomRestart:
 
                     if hops > 0:
                         # assign the next task to the finished process
-                        comm.Send([np.array([0], dtype=np.float32)],
+                        comm.Send([np.zeros(0, dtype=np.float32)],
                                 dest=status.Get_source(), tag=RRMPITag.TAG_MSG)
                         hops -= 1
                     else:
