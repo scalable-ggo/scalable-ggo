@@ -1,7 +1,7 @@
 from mpi4py import MPI
 
 from sggo.energy import lj
-from sggo.global_opt.random_walk_mpi import RandomRestart  
+from sggo.global_opt.random_walk_mpi import RandomWalk
 from sggo.local_opt import fire
 from sggo.visualize.plot import ClusterPlot
 
@@ -13,9 +13,9 @@ def main():
     energy = lj.create()
     local_opt = fire.create(energy)
 
-    rr = RandomRestart(local_optimizer=local_opt)
+    rw = RandomWalk(local_optimizer=local_opt)
 
-    best_energy, best_cluster = rr.find_minimum(
+    best_energy, best_cluster = rw.find_minimum(
         num_atoms=38,
         num_epochs=10000,
         target=-173.928427,
