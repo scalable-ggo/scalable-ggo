@@ -38,7 +38,6 @@ class FIRE(LocalOpt):
         self.a_start = a_start
         self.fa = fa
 
-    # TODO either reference ASE or reimplement
     def _fire(
         self,
         cluster: Cluster,
@@ -48,7 +47,7 @@ class FIRE(LocalOpt):
         pos = cluster.positions
         xp = cp.get_array_module(pos)
 
-        fmax = xp.float32(target_gradient)
+        target_gradient = xp.float32(target_gradient)
         maxstep = xp.float32(self.maxstep)
         dtmax = xp.float32(self.dtmax)
         nmin = self.nmin
@@ -60,39 +59,41 @@ class FIRE(LocalOpt):
 
         a = a_start
         dt = dt_start
-
-        v = None
-        step_cnt = 0
+        velocity = xp.zeros_like(pos, dtype=xp.float32)
+        step = 0
 
         for _ in range(max_steps):
-            cluster.positions = pos
-            f = -self.energy.energy_gradient(cluster)
-            norm = xp.linalg.norm(f, axis=1).max()
-            if norm < fmax:
+            gradient = self.energy.energy_gradient(cluster)
+
+            norm = xp.linalg.norm(gradient, axis=1).max()
+            if norm < target_gradient:
                 break
 
-            if v is None:
-                v = xp.zeros_like(pos, dtype=xp.float32)
+            delta_e = xp.vdot(gradient, velocity)
+
+            if delta_e < xp.float32(0):
+                velocity = (xp.float32(1) - a) * velocity - a * gradient / xp.linalg.norm(gradient) * xp.linalg.norm(velocity)
+
+                if step > nmin:
+                    dt *= finc
+                    dt = dtmax if dt > dtmax else dt
+                    a *= fa
+
+                step += 1
             else:
-                vf = xp.vdot(f, v)
-                if vf > xp.float32(0.0):
-                    v = (xp.float32(1.0) - a) * v + a * f / xp.sqrt(xp.vdot(f, f)) * xp.sqrt(xp.vdot(v, v))
-                    if step_cnt > nmin:
-                        dt = min(dt * finc, dtmax)
-                        a *= fa
-                    step_cnt += 1
-                else:
-                    v *= xp.float32(0.0)
-                    a = a_start
-                    dt *= fdec
-                    step_cnt = 0
+                velocity[:, :] = xp.float32(0)
+                a = a_start
+                dt *= fdec
+                step = 0
 
-            v += dt * f
-            dr = dt * v
-            normdr = xp.sqrt(xp.vdot(dr, dr))
-            if normdr > maxstep:
-                dr = maxstep * dr / normdr
-            pos += dr
+            velocity += -gradient * dt
+            delta_pos = velocity * dt
 
-        cluster.positions = pos
+            step_len = xp.linalg.norm(delta_pos)
+
+            if step_len > maxstep:
+                delta_pos = delta_pos / step_len * maxstep
+
+            pos += delta_pos
+
         return cluster
