@@ -87,7 +87,7 @@ class RandomRestart:
 
         else:
             # worker process
-            data = np.zeros(1, dtype=np.float32)
+            data = np.zeros(0, dtype=np.float32)
             status = MPI.Status()
 
             while True:
