@@ -12,7 +12,7 @@ class RRMPITag(IntEnum):
     TAG_EXIT = 2
 
 
-class RandomRestart:
+class RandomWalk:
     def __init__(self, local_optimizer: LocalOpt):
         self.local_optimizer = local_optimizer
 
