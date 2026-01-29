@@ -12,19 +12,29 @@ where r is the distance, ε is the depth of the well, and σ is the distance at 
 
 ## Features
 
-- **Global Optimization Algorithms**: Supports methods such as Basin-Hopping and Genetic Algorithms.
-- **Separation Enforcement**: Ensures a minimum distance between atoms to prevent overlaps.
+- **Global Optimization Algorithms**: Supports methods such as Random Walk, Basin-Hopping and Genetic Algorithms.
+- **Local Optimization Algorithms**: Includes implementations for FIRE, CG, and BFGS as local optimization algorithms.
+- **Scalability**: Supports both NVIDIA GPU and MPI parallelization for maximum scalability.
 - **Visualization Tools**: 3D plots of cluster structures.
-- **Scalability**: Optimized for clusters for large clusters using GPU programming.
 
 ---
 
 ## Installation
 
-Requires **Python 3.13+** and standard scientific libraries:
+Requires an MPI implementation, **Python 3.13+** and standard python scientific libraries to function. In addition optional support for GPU based implementations require NVIDIA CUDA 13 toolkit:
 
 ```bash
 git clone git@gitlab.ewi.tudelft.nl:kradziwilowicz/scalable-ggo.git
 cd scalable-ggo
 pip install -r requirements.txt
+```
 
+## Usage
+The sggo module can be used standalone for custom python programs. In addition, a convenience script is provided to run a global optimization algorithm from a given configuration file. This script can be run with the example configuration as follows:
+```bash
+python3 sggo.py example.ini
+```
+All options supported by the configuration file are documented in the example configuration file example.ini. The script also supports being run with MPI. The following example uses mpirun to run the example configuration with 8 MPI processes:
+```bash
+mpirun -np 8 python3 sggo.py example.ini
+```
