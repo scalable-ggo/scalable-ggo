@@ -24,7 +24,7 @@ where r is the distance, ε is the depth of the well, and σ is the distance at 
 Requires an MPI implementation, **Python 3.13+** and standard python scientific libraries to function. In addition optional support for GPU based implementations require NVIDIA CUDA 13 toolkit:
 
 ```bash
-git clone git@gitlab.ewi.tudelft.nl:kradziwilowicz/scalable-ggo.git
+git clone git@github.com:scalable-ggo/scalable-ggo.git
 cd scalable-ggo
 pip install -r requirements.txt
 ```
