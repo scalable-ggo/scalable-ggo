@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import configparser
-import os
 import sys
 
 from mpi4py import MPI
 
 from sggo.energy import lj
+from sggo.global_opt.random_walk import RandomWalk
 from sggo.global_opt.basin_hopping import BasinHopping
 from sggo.global_opt.genetic import GeneticAlgorithm
 from sggo.local_opt import bfgs, cg, fire
@@ -18,9 +18,9 @@ def main():
     if argc != 2 or sys.argv[1] == "-h" or sys.argv[1] == "--help":
         print(f"Usage: {sys.argv[0]} config_file.ini")
         if argc != 2:
-            os.exit(1)
+            sys.exit(1)
         else:
-            os.exit(0)
+            sys.exit(0)
 
     config = configparser.ConfigParser()
     config.read(sys.argv[1])
@@ -37,11 +37,11 @@ def main():
 
     if epochs is None:
         print("The number of epochs is required")
-        os.exit(1)
+        sys.exit(1)
 
     if size is None:
         print("The cluster size is required")
-        os.exit(1)
+        sys.exit(1)
 
     energy = None
     local_opt = None
@@ -56,7 +56,7 @@ def main():
             energy = lj.create(variant=lj.LJVariant.GPUKERNEL)
         case _:
             print(f"Unkown LJ implementation {lj_imp}")
-            os.exit(1)
+            sys.exit(1)
 
     match local_opt_alg.upper():
         case "FIRE":
@@ -68,8 +68,8 @@ def main():
                 case "GPUKERNEL":
                     local_opt = fire.create(energy, variant=fire.FIREVariant.GPUKERNEL)
                 case _:
-                    print(f"Unkown FIRE implementation {local_opt_alg}")
-                    os.exit(1)
+                    print(f"Unkown FIRE implementation {local_opt_imp}")
+                    sys.exit(1)
         case "CG":
             match local_opt_imp.upper():
                 case "CPU":
@@ -77,8 +77,8 @@ def main():
                 case "GPU":
                     local_opt = cg.create(energy, variant=cg.CGVariant.GPU)
                 case _:
-                    print(f"Unkown CG implementation {local_opt_alg}")
-                    os.exit(1)
+                    print(f"Unkown CG implementation {local_opt_imp}")
+                    sys.exit(1)
         case "BFGS":
             match local_opt_imp.upper():
                 case "CPU":
@@ -86,29 +86,32 @@ def main():
                 case "GPU":
                     local_opt = bfgs.create(energy, variant=bfgs.BFGSVariant.GPU)
                 case _:
-                    print(f"Unkown BFGS implementation {local_opt_alg}")
-                    os.exit(1)
+                    print(f"Unkown BFGS implementation {local_opt_imp}")
+                    sys.exit(1)
         case _:
             print(f"Unkown global optimization algorithm {local_opt_alg}")
-            os.exit(1)
+            sys.exit(1)
 
     match global_opt_alg.upper():
+        case "RANDOMWALK":
+            global_opt = RandomWalk(local_opt)
         case "BASINHOPPING":
             global_opt = BasinHopping(local_opt)
         case "GENETICALGORITHM":
             global_opt = GeneticAlgorithm(10, local_opt, operators = [1,2,3,4,5])
         case _:
-            print(f"Unkown global optimization algorithm {local_opt_alg}")
-            os.exit(1)
+            print(f"Unkown global optimization algorithm {global_opt_alg}")
+            sys.exit(1)
 
     energy, clustermin = global_opt.find_minimum(num_atoms=size, num_epochs=epochs, target=target)
     if MPI.COMM_WORLD.rank == 0:
         print("Energy of the best cluster: ", energy)
-        plot = ClusterPlot(clustermin)
-        plot.plot()
 
         if out_file is not None:
             clustermin.save(out_file)
+
+        plot = ClusterPlot(clustermin)
+        plot.plot()
 
 if __name__ == "__main__":
     main()
